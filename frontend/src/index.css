@@ -1,0 +1,82 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-background text-white font-sans antialiased;
+  }
+  
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  
+  ::-webkit-scrollbar-track {
+    @apply bg-background;
+  }
+  
+  ::-webkit-scrollbar-thumb {
+    @apply bg-surface rounded-full;
+  }
+  
+  ::-webkit-scrollbar-thumb:hover {
+    @apply bg-primary;
+  }
+}
+
+@layer components {
+  .glass-card {
+    @apply bg-card/80 backdrop-blur-xl border border-white/5 rounded-2xl;
+  }
+  
+  .glass-nav {
+    @apply bg-background/80 backdrop-blur-xl border-b border-white/5;
+  }
+  
+  .gradient-text {
+    @apply bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent;
+  }
+  
+  .hover-lift {
+    @apply transition-all duration-300 hover:-translate-y-1 hover:shadow-xl hover:shadow-primary/20;
+  }
+  
+  .btn-primary {
+    @apply px-6 py-3 bg-primary hover:bg-primary/90 text-white rounded-xl font-semibold 
+           transition-all duration-200 hover:shadow-lg hover:shadow-primary/30 active:scale-95;
+  }
+  
+  .btn-secondary {
+    @apply px-6 py-3 bg-secondary hover:bg-secondary/90 text-white rounded-xl font-semibold 
+           transition-all duration-200 hover:shadow-lg hover:shadow-secondary/30 active:scale-95;
+  }
+  
+  .input-field {
+    @apply w-full px-4 py-3 bg-surface border border-border rounded-xl text-white 
+           placeholder-gray-500 focus:outline-none focus:border-primary focus:ring-2 
+           focus:ring-primary/20 transition-all duration-200;
+  }
+}
+
+@layer utilities {
+  .line-clamp-2 {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  
+  .hover-lift {
+    @apply transition-all duration-300 hover:-translate-y-1 hover:shadow-xl;
+  }
+  
+  .glass-card {
+    @apply bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl;
+  }
+
+  /* Safe area padding for mobile devices with notches/home bars */
+  .safe-area-pb {
+    padding-bottom: max(0.5rem, env(safe-area-inset-bottom));
+  }
+}
