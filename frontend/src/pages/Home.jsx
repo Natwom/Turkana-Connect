@@ -9,10 +9,12 @@ import {
   Radio, Award, Heart, Share2, BarChart3
 } from 'lucide-react'
 
+// FIXED: Uses VITE_API_URL instead of hardcoded localhost
 const getImageUrl = (path) => {
-  if (!path) return null
+  if (!path) return '/default-cover.jpg'
   if (path.startsWith('http')) return path
-  return `http://localhost:8000${path}`
+  const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000'
+  return `${baseUrl}${path}`
 }
 
 const Home = () => {
@@ -37,6 +39,8 @@ const Home = () => {
     const fetchData = async () => {
       try {
         setLoading(true)
+        setError(null)
+        
         const [songsRes, artistsRes, catsRes] = await Promise.all([
           api.get('/api/v1/songs?limit=12'),
           api.get('/api/v1/artists?limit=8'),
@@ -59,7 +63,7 @@ const Home = () => {
         })
       } catch (err) {
         console.error('Failed to fetch data:', err)
-        setError('Unable to load content. Please try again.')
+        setError(err.response?.data?.detail || err.message || 'Unable to load content. Please try again.')
       } finally {
         setLoading(false)
       }
@@ -119,13 +123,23 @@ const Home = () => {
         className="relative mx-4 rounded-3xl overflow-hidden"
       >
         <div className="absolute inset-0">
-          <img src={getImageUrl(featuredSong?.cover_url) || '/default-cover.jpg'} alt="Featured" className="w-full h-full object-cover" />
+          <img 
+            src={getImageUrl(featuredSong?.cover_url)} 
+            alt="Featured" 
+            className="w-full h-full object-cover"
+            onError={(e) => { e.target.src = '/default-cover.jpg' }}
+          />
           <div className="absolute inset-0 bg-gradient-to-r from-background via-background/95 to-background/60" />
         </div>
         
         <div className="relative z-10 flex items-center gap-6 p-6 md:p-8">
           <div className="relative w-32 h-32 md:w-40 md:h-40 rounded-2xl overflow-hidden shadow-2xl flex-shrink-0 ring-2 ring-primary/30">
-            <img src={getImageUrl(featuredSong?.cover_url) || '/default-cover.jpg'} alt="Featured" className="w-full h-full object-cover" />
+            <img 
+              src={getImageUrl(featuredSong?.cover_url)} 
+              alt="Featured" 
+              className="w-full h-full object-cover"
+              onError={(e) => { e.target.src = '/default-cover.jpg' }}
+            />
             <button onClick={() => handlePlaySong(featuredSong)} className="absolute inset-0 bg-black/40 opacity-0 hover:opacity-100 flex items-center justify-center transition-opacity">
               <Play className="w-12 h-12 fill-current text-white" />
             </button>
@@ -197,38 +211,47 @@ const Home = () => {
           </button>
         </div>
 
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-3">
-          {trending.map((song, i) => (
-            <motion.div
-              key={song.id}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: i * 0.05 }}
-              onMouseEnter={() => setHoveredSong(song.id)}
-              onMouseLeave={() => setHoveredSong(null)}
-              onClick={() => handlePlaySong(song)}
-              className="group cursor-pointer"
-            >
-              <div className="relative aspect-square rounded-xl overflow-hidden mb-2">
-                <img src={getImageUrl(song.cover_url) || '/default-cover.jpg'} alt={song.title} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" />
-                <AnimatePresence>
-                  {hoveredSong === song.id && (
-                    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-black/50 flex items-center justify-center backdrop-blur-sm">
-                      <div className="w-10 h-10 bg-primary rounded-full flex items-center justify-center">
-                        <Play className="w-4 h-4 fill-current ml-0.5" />
-                      </div>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-                <div className="absolute top-1.5 left-1.5 w-6 h-6 bg-black/60 backdrop-blur-sm rounded-md flex items-center justify-center">
-                  <span className="text-xs font-bold">{i + 1}</span>
+        {trending.length === 0 ? (
+          <div className="text-center py-8 text-gray-500 text-sm">No trending songs yet</div>
+        ) : (
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-3">
+            {trending.map((song, i) => (
+              <motion.div
+                key={song.id}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: i * 0.05 }}
+                onMouseEnter={() => setHoveredSong(song.id)}
+                onMouseLeave={() => setHoveredSong(null)}
+                onClick={() => handlePlaySong(song)}
+                className="group cursor-pointer"
+              >
+                <div className="relative aspect-square rounded-xl overflow-hidden mb-2">
+                  <img 
+                    src={getImageUrl(song.cover_url)} 
+                    alt={song.title} 
+                    className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+                    onError={(e) => { e.target.src = '/default-cover.jpg' }}
+                  />
+                  <AnimatePresence>
+                    {hoveredSong === song.id && (
+                      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-black/50 flex items-center justify-center backdrop-blur-sm">
+                        <div className="w-10 h-10 bg-primary rounded-full flex items-center justify-center">
+                          <Play className="w-4 h-4 fill-current ml-0.5" />
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                  <div className="absolute top-1.5 left-1.5 w-6 h-6 bg-black/60 backdrop-blur-sm rounded-md flex items-center justify-center">
+                    <span className="text-xs font-bold">{i + 1}</span>
+                  </div>
                 </div>
-              </div>
-              <h3 className="font-semibold text-sm truncate group-hover:text-primary transition-colors">{song.title}</h3>
-              <p className="text-xs text-gray-500 truncate">{song.artist?.stage_name || 'Unknown'}</p>
-            </motion.div>
-          ))}
-        </div>
+                <h3 className="font-semibold text-sm truncate group-hover:text-primary transition-colors">{song.title}</h3>
+                <p className="text-xs text-gray-500 truncate">{song.artist?.stage_name || 'Unknown'}</p>
+              </motion.div>
+            ))}
+          </div>
+        )}
       </section>
 
       {/* FEATURED ARTISTS */}
@@ -243,24 +266,33 @@ const Home = () => {
           </button>
         </div>
 
-        <div className="grid grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-3">
-          {artists.map((artist, i) => (
-            <motion.div
-              key={artist.id}
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ delay: i * 0.04 }}
-              onClick={() => navigate(`/artist/${artist.id}`)}
-              className="group text-center cursor-pointer"
-            >
-              <div className="relative w-full aspect-square rounded-xl overflow-hidden mb-2 ring-2 ring-transparent group-hover:ring-primary/40 transition-all">
-                <img src={getImageUrl(artist.image_url) || '/default-avatar.jpg'} alt={artist.stage_name} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" />
-              </div>
-              <h3 className="font-semibold text-xs truncate group-hover:text-primary transition-colors">{artist.stage_name}</h3>
-              <p className="text-[10px] text-gray-500">{(artist.followers_count ?? 0).toLocaleString()}</p>
-            </motion.div>
-          ))}
-        </div>
+        {artists.length === 0 ? (
+          <div className="text-center py-8 text-gray-500 text-sm">No artists yet</div>
+        ) : (
+          <div className="grid grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-3">
+            {artists.map((artist, i) => (
+              <motion.div
+                key={artist.id}
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ delay: i * 0.04 }}
+                onClick={() => navigate(`/artist/${artist.id}`)}
+                className="group text-center cursor-pointer"
+              >
+                <div className="relative w-full aspect-square rounded-xl overflow-hidden mb-2 ring-2 ring-transparent group-hover:ring-primary/40 transition-all">
+                  <img 
+                    src={getImageUrl(artist.image_url)} 
+                    alt={artist.stage_name} 
+                    className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+                    onError={(e) => { e.target.src = '/default-avatar.jpg' }}
+                  />
+                </div>
+                <h3 className="font-semibold text-xs truncate group-hover:text-primary transition-colors">{artist.stage_name}</h3>
+                <p className="text-[10px] text-gray-500">{(artist.followers_count ?? 0).toLocaleString()}</p>
+              </motion.div>
+            ))}
+          </div>
+        )}
       </section>
 
       {/* NEW RELEASES */}
@@ -275,33 +307,42 @@ const Home = () => {
           </button>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
-          {newReleases.map((song, i) => (
-            <motion.div
-              key={song.id}
-              initial={{ opacity: 0, x: -10 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: i * 0.03 }}
-              onClick={() => handlePlaySong(song)}
-              className="group flex items-center gap-3 p-2.5 rounded-xl hover:bg-surface/80 cursor-pointer transition-all"
-            >
-              <div className="relative w-14 h-14 rounded-lg overflow-hidden flex-shrink-0">
-                <img src={getImageUrl(song.cover_url) || '/default-cover.jpg'} alt={song.title} className="w-full h-full object-cover" />
-                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
-                  <Play className="w-5 h-5 fill-current" />
+        {newReleases.length === 0 ? (
+          <div className="text-center py-8 text-gray-500 text-sm">No new releases yet</div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
+            {newReleases.map((song, i) => (
+              <motion.div
+                key={song.id}
+                initial={{ opacity: 0, x: -10 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: i * 0.03 }}
+                onClick={() => handlePlaySong(song)}
+                className="group flex items-center gap-3 p-2.5 rounded-xl hover:bg-surface/80 cursor-pointer transition-all"
+              >
+                <div className="relative w-14 h-14 rounded-lg overflow-hidden flex-shrink-0">
+                  <img 
+                    src={getImageUrl(song.cover_url)} 
+                    alt={song.title} 
+                    className="w-full h-full object-cover"
+                    onError={(e) => { e.target.src = '/default-cover.jpg' }}
+                  />
+                  <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
+                    <Play className="w-5 h-5 fill-current" />
+                  </div>
                 </div>
-              </div>
-              <div className="flex-1 min-w-0">
-                <h3 className="font-semibold text-sm truncate group-hover:text-primary transition-colors">{song.title}</h3>
-                <p className="text-xs text-gray-500 truncate">{song.artist?.stage_name || 'Unknown'}</p>
-              </div>
-              <span className="text-xs text-gray-600 font-medium">{song.duration ? `${Math.floor(song.duration / 60)}:${(song.duration % 60).toString().padStart(2, '0')}` : '3:45'}</span>
-            </motion.div>
-          ))}
-        </div>
+                <div className="flex-1 min-w-0">
+                  <h3 className="font-semibold text-sm truncate group-hover:text-primary transition-colors">{song.title}</h3>
+                  <p className="text-xs text-gray-500 truncate">{song.artist?.stage_name || 'Unknown'}</p>
+                </div>
+                <span className="text-xs text-gray-600 font-medium">{song.duration ? `${Math.floor(song.duration / 60)}:${(song.duration % 60).toString().padStart(2, '0')}` : '3:45'}</span>
+              </motion.div>
+            ))}
+          </div>
+        )}
       </section>
 
-      {/* CATEGORIES — NOW FETCHED FROM API */}
+      {/* CATEGORIES */}
       <section className="px-4 md:px-8 py-4">
         <div className="flex items-end justify-between mb-4">
           <div className="flex items-center gap-2">
@@ -313,25 +354,29 @@ const Home = () => {
           </button>
         </div>
 
-        <div className="grid grid-cols-3 md:grid-cols-6 gap-3">
-          {categories.map((cat, i) => (
-            <motion.div
-              key={cat.id}
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: i * 0.05 }}
-              onClick={() => navigate(`/categories?genre=${encodeURIComponent(cat.slug || cat.name)}`)}
-              className="relative h-28 rounded-xl overflow-hidden cursor-pointer group"
-              style={{ backgroundColor: cat.color || '#7C3AED' }}
-            >
-              <div className="absolute inset-0 bg-black/20 group-hover:bg-black/10 transition-colors" />
-              <div className="absolute inset-0 flex flex-col items-center justify-center text-white p-2">
-                <h3 className="font-bold text-sm text-center">{cat.name}</h3>
-                {cat.description && <p className="text-[10px] text-white/70 text-center mt-1 line-clamp-2">{cat.description}</p>}
-              </div>
-            </motion.div>
-          ))}
-        </div>
+        {categories.length === 0 ? (
+          <div className="text-center py-8 text-gray-500 text-sm">No categories yet</div>
+        ) : (
+          <div className="grid grid-cols-3 md:grid-cols-6 gap-3">
+            {categories.map((cat, i) => (
+              <motion.div
+                key={cat.id}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: i * 0.05 }}
+                onClick={() => navigate(`/categories?genre=${encodeURIComponent(cat.slug || cat.name)}`)}
+                className="relative h-28 rounded-xl overflow-hidden cursor-pointer group"
+                style={{ backgroundColor: cat.color || '#7C3AED' }}
+              >
+                <div className="absolute inset-0 bg-black/20 group-hover:bg-black/10 transition-colors" />
+                <div className="absolute inset-0 flex flex-col items-center justify-center text-white p-2">
+                  <h3 className="font-bold text-sm text-center">{cat.name}</h3>
+                  {cat.description && <p className="text-[10px] text-white/70 text-center mt-1 line-clamp-2">{cat.description}</p>}
+                </div>
+              </motion.div>
+            ))}
+          </div>
+        )}
       </section>
 
       {/* BOTTOM CTA */}
