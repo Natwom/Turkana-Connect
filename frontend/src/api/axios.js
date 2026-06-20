@@ -1,8 +1,7 @@
 import axios from 'axios'
 
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:8000'
-  // NO default Content-Type header — let each request set its own
+  baseURL: 'https://turkana-connect-api.onrender.com'
 })
 
 api.interceptors.request.use((config) => {
