@@ -47,10 +47,15 @@ app = FastAPI(
     version="1.0.0"
 )
 
-# CORS
+# CORS - Updated for production
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[settings.FRONTEND_URL, settings.ADMIN_URL],
+    allow_origins=[
+        "http://localhost:5173",
+        "http://localhost:5174",
+        "https://apiaro-music.onrender.com",
+        "https://turkana-connect-admin.onrender.com",
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
