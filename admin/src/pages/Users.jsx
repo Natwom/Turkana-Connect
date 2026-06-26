@@ -19,9 +19,10 @@ import {
   Eye,
   Edit3,
   Ban,
-  CheckCircle2
+  CheckCircle2,
+  X
 } from 'lucide-react'
-import axios from 'axios'
+import api from '../api/axios'  // ✅ FIXED: Use configured API instance
 
 const Users = () => {
   const [users, setUsers] = useState([])
@@ -40,22 +41,27 @@ const Users = () => {
   const fetchUsers = async () => {
     try {
       setRefreshing(true)
-      const res = await axios.get('/api/v1/admin/users')
+      const res = await api.get('/admin/users')  // ✅ FIXED: Use api instance
       setUsers(res.data)
     } catch (err) {
       console.error('Failed to fetch users:', err)
+      if (err.response?.status === 401) {
+        console.error('Unauthorized - redirecting to login')
+      }
     } finally {
       setLoading(false)
       setRefreshing(false)
     }
   }
 
-  const handleToggleStatus = async (userId, currentStatus) => {
+  const handleDeleteUser = async (userId) => {
+    if (!confirm('Are you sure you want to delete this user?')) return
     try {
-      await axios.patch(`/api/v1/admin/users/${userId}`, { is_active: !currentStatus })
-      setUsers(prev => prev.map(u => u.id === userId ? { ...u, is_active: !currentStatus } : u))
+      await api.delete(`/admin/users/${userId}`)  // ✅ FIXED: Use api instance + correct endpoint
+      setUsers(prev => prev.filter(u => u.id !== userId))
     } catch (err) {
-      console.error('Failed to update user status:', err)
+      console.error('Failed to delete user:', err)
+      alert(err.response?.data?.detail || 'Failed to delete user')
     }
   }
 
@@ -75,7 +81,7 @@ const Users = () => {
     total: users.length,
     admin: users.filter(u => u.role === 'admin').length,
     artist: users.filter(u => u.role === 'artist').length,
-    listener: users.filter(u => u.role === 'listener' || !u.role).length,
+    listener: users.filter(u => u.role === 'user' || !u.role).length,  // ✅ FIXED: 'user' not 'listener'
     active: users.filter(u => u.is_active).length,
     inactive: users.filter(u => !u.is_active).length
   }
@@ -87,7 +93,7 @@ const Users = () => {
       case 'artist':
         return { icon: Music, color: 'text-fuchsia-400', bg: 'bg-fuchsia-500/10', border: 'border-fuchsia-500/20', label: 'Artist' }
       default:
-        return { icon: User, color: 'text-gray-400', bg: 'bg-gray-500/10', border: 'border-gray-500/20', label: 'Listener' }
+        return { icon: User, color: 'text-gray-400', bg: 'bg-gray-500/10', border: 'border-gray-500/20', label: 'User' }  // ✅ FIXED: 'User' not 'Listener'
     }
   }
 
@@ -195,7 +201,7 @@ const Users = () => {
               <option value="all">All Roles</option>
               <option value="admin">Admin</option>
               <option value="artist">Artist</option>
-              <option value="listener">Listener</option>
+              <option value="user">User</option>
             </select>
             <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500 pointer-events-none" />
           </div>
@@ -272,17 +278,14 @@ const Users = () => {
                         </span>
                       </td>
                       <td className="px-6 py-4">
-                        <button
-                          onClick={() => handleToggleStatus(user.id, user.is_active)}
-                          className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all ${
-                            user.is_active 
-                              ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 hover:bg-emerald-500/20' 
-                              : 'bg-red-500/10 text-red-400 border border-red-500/20 hover:bg-red-500/20'
-                          }`}
-                        >
+                        <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border ${
+                          user.is_active 
+                            ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' 
+                            : 'bg-red-500/10 text-red-400 border-red-500/20'
+                        }`}>
                           {user.is_active ? <UserCheck className="w-3 h-3" /> : <UserX className="w-3 h-3" />}
                           {user.is_active ? 'Active' : 'Inactive'}
-                        </button>
+                        </span>
                       </td>
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-1.5 text-sm text-gray-500">
@@ -308,30 +311,11 @@ const Users = () => {
                           <motion.button
                             whileHover={{ scale: 1.1 }}
                             whileTap={{ scale: 0.9 }}
-                            className="p-2 rounded-lg hover:bg-white/5 text-gray-500 hover:text-white transition-all"
-                            title="Edit User"
+                            onClick={() => handleDeleteUser(user.id)}
+                            className="p-2 rounded-lg hover:bg-red-500/10 text-gray-500 hover:text-red-400 transition-all"
+                            title="Delete User"
                           >
-                            <Edit3 className="w-4 h-4" />
-                          </motion.button>
-                          <motion.button
-                            whileHover={{ scale: 1.1 }}
-                            whileTap={{ scale: 0.9 }}
-                            onClick={() => handleToggleStatus(user.id, user.is_active)}
-                            className={`p-2 rounded-lg transition-all ${
-                              user.is_active 
-                                ? 'hover:bg-red-500/10 text-gray-500 hover:text-red-400' 
-                                : 'hover:bg-emerald-500/10 text-gray-500 hover:text-emerald-400'
-                            }`}
-                            title={user.is_active ? 'Deactivate' : 'Activate'}
-                          >
-                            {user.is_active ? <Ban className="w-4 h-4" /> : <CheckCircle2 className="w-4 h-4" />}
-                          </motion.button>
-                          <motion.button
-                            whileHover={{ scale: 1.1 }}
-                            whileTap={{ scale: 0.9 }}
-                            className="p-2 rounded-lg hover:bg-white/5 text-gray-500 hover:text-white opacity-0 group-hover:opacity-100 transition-all"
-                          >
-                            <MoreHorizontal className="w-4 h-4" />
+                            <Ban className="w-4 h-4" />
                           </motion.button>
                         </div>
                       </td>
@@ -437,14 +421,10 @@ const Users = () => {
                 <motion.button
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
-                  onClick={() => { handleToggleStatus(selectedUser.id, selectedUser.is_active); setShowDetailModal(false) }}
-                  className={`flex-1 py-3 rounded-xl font-medium text-sm transition-all ${
-                    selectedUser.is_active 
-                      ? 'bg-red-500/10 text-red-400 hover:bg-red-500/20 border border-red-500/20' 
-                      : 'bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 border border-emerald-500/20'
-                  }`}
+                  onClick={() => { handleDeleteUser(selectedUser.id); setShowDetailModal(false) }}
+                  className="flex-1 py-3 rounded-xl font-medium text-sm bg-red-500/10 text-red-400 hover:bg-red-500/20 border border-red-500/20 transition-all"
                 >
-                  {selectedUser.is_active ? 'Deactivate User' : 'Activate User'}
+                  Delete User
                 </motion.button>
               </div>
             </motion.div>
