@@ -5,9 +5,13 @@ import {
   Check, 
   X, 
   Clock, 
+  Filter,
   Search,
   MoreHorizontal,
   Eye,
+  ShieldCheck,
+  MessageSquare,
+  Flag,
   ChevronDown,
   RefreshCw,
   Download,
@@ -17,10 +21,9 @@ import {
   Music,
   Users,
   ListMusic,
-  User,
-  Flag
+  User
 } from 'lucide-react'
-import api from '../api/axios'  // ✅ FIXED
+import axios from 'axios'
 
 const Reports = () => {
   const [reports, setReports] = useState([])
@@ -39,7 +42,7 @@ const Reports = () => {
   const fetchReports = async () => {
     try {
       setRefreshing(true)
-      const res = await api.get('/api/v1/admin/reports')  // ✅ FIXED
+      const res = await axios.get('/api/v1/admin/reports')
       setReports(res.data)
     } catch (err) {
       console.error('Failed to fetch reports:', err)
@@ -51,7 +54,7 @@ const Reports = () => {
 
   const handleStatusUpdate = async (reportId, newStatus) => {
     try {
-      await api.patch(`/api/v1/admin/reports/${reportId}`, { status: newStatus })  // ✅ FIXED
+      await axios.patch(`/api/v1/admin/reports/${reportId}`, { status: newStatus })
       setReports(prev => prev.map(r => r.id === reportId ? { ...r, status: newStatus } : r))
     } catch (err) {
       console.error('Failed to update report:', err)
