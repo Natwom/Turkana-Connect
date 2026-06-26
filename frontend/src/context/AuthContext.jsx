@@ -19,7 +19,7 @@ export const AuthProvider = ({ children }) => {
 
   const fetchUser = async () => {
     try {
-      const res = await api.get('/auth/me')
+      const res = await api.get('/api/v1/auth/me')
       setUser(res.data)
     } catch (err) {
       logout()
@@ -33,7 +33,7 @@ export const AuthProvider = ({ children }) => {
     params.append('username', email)
     params.append('password', password)
 
-    const res = await api.post('/auth/login', params, {
+    const res = await api.post('/api/v1/auth/login', params, {
       headers: {
         'Content-Type': 'application/x-www-form-urlencoded'
       }
@@ -47,7 +47,7 @@ export const AuthProvider = ({ children }) => {
   }
 
   const register = async (userData) => {
-    const res = await api.post('/auth/register', userData)
+    const res = await api.post('/api/v1/auth/register', userData)
     return res.data
   }
 
