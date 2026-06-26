@@ -48,13 +48,14 @@ app = FastAPI(
 )
 
 # CORS - Updated for production
+# Add your actual deployed frontend URLs here
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
-        "http://localhost:5173",
-        "http://localhost:5174",
-        "https://apiaro-music.onrender.com",
-        "https://turkana-connect-admin.onrender.com",
+        "http://localhost:5173",      # Frontend dev
+        "http://localhost:5174",      # Admin dev
+        "https://apiaro-music.onrender.com",           # Your deployed frontend
+        "https://turkana-connect-admin.onrender.com",  # Your deployed admin
     ],
     allow_credentials=True,
     allow_methods=["*"],

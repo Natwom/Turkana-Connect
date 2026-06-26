@@ -10,7 +10,11 @@ from app.database import get_db
 from app import models, schemas
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="api/v1/auth/login")
+
+# CRITICAL FIX: tokenUrl must be the FULL absolute path
+# The auth router is mounted at /api/v1 with prefix="/auth"
+# Without the leading /api/v1, Swagger UI "Authorize" breaks
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login")
 
 def verify_password(plain_password, hashed_password):
     return pwd_context.verify(plain_password, hashed_password)

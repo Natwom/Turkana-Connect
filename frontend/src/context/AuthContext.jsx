@@ -19,7 +19,7 @@ export const AuthProvider = ({ children }) => {
 
   const fetchUser = async () => {
     try {
-      const res = await api.get('/api/v1/auth/me')
+      const res = await api.get('/auth/me')
       setUser(res.data)
     } catch (err) {
       logout()
@@ -29,12 +29,11 @@ export const AuthProvider = ({ children }) => {
   }
 
   const login = async (email, password) => {
-    // OAuth2PasswordRequestForm expects URL-encoded form data
     const params = new URLSearchParams()
     params.append('username', email)
     params.append('password', password)
 
-    const res = await api.post('/api/v1/auth/login', params, {
+    const res = await api.post('/auth/login', params, {
       headers: {
         'Content-Type': 'application/x-www-form-urlencoded'
       }
@@ -48,7 +47,7 @@ export const AuthProvider = ({ children }) => {
   }
 
   const register = async (userData) => {
-    const res = await api.post('/api/v1/auth/register', userData)
+    const res = await api.post('/auth/register', userData)
     return res.data
   }
 
@@ -56,13 +55,20 @@ export const AuthProvider = ({ children }) => {
     localStorage.removeItem('token')
     delete api.defaults.headers.common['Authorization']
     setUser(null)
+    window.location.href = '/login'
   }
 
   return (
-    <AuthContext.Provider value={{ user, login, logout, register, loading }}>
+    <AuthContext.Provider value={{ user, login, logout, register, loading, isAuthenticated: !!user }}>
       {children}
     </AuthContext.Provider>
   )
 }
 
-export const useAuth = () => useContext(AuthContext)
+export const useAuth = () => {
+  const context = useContext(AuthContext)
+  if (!context) {
+    throw new Error('useAuth must be used within an AuthProvider')
+  }
+  return context
+}
