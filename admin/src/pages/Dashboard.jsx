@@ -18,7 +18,7 @@ import {
   RefreshCw,
   Calendar
 } from 'lucide-react'
-import axios from 'axios'
+import api from '../api/axios'
 import StatCard from '../components/StatCard'
 
 const Dashboard = () => {
@@ -37,7 +37,7 @@ const Dashboard = () => {
   const fetchStats = async () => {
     try {
       setRefreshing(true)
-      const res = await axios.get('/api/v1/admin/dashboard')
+      const res = await api.get('/admin/dashboard')
       setStats(res.data)
       setLastUpdated(new Date())
     } catch (err) {
@@ -50,12 +50,11 @@ const Dashboard = () => {
 
   useEffect(() => {
     fetchStats()
-    // Auto-refresh every 30 seconds
     const interval = setInterval(fetchStats, 30000)
     return () => clearInterval(interval)
   }, [])
 
-  // Mock activity data - replace with API data
+  // Mock activity data - replace with API data when available
   const recentActivity = [
     { type: 'user', action: 'New user registered', detail: 'john_doe joined', time: '2 min ago', icon: Users, color: 'text-blue-400', bg: 'bg-blue-500/10' },
     { type: 'song', action: 'Song uploaded', detail: 'Jerusalema by Master KG', time: '5 min ago', icon: Music, color: 'text-fuchsia-400', bg: 'bg-fuchsia-500/10' },
@@ -71,7 +70,6 @@ const Dashboard = () => {
     { title: 'Amaboko', artist: 'Bruce Melodie', plays: '980K', trend: '+5%', cover: 'bg-gradient-to-br from-blue-500 to-cyan-600' },
   ]
 
-  // Chart data (mock - replace with real data)
   const chartData = [35, 55, 40, 70, 65, 85, 60, 90, 75, 100, 80, 95]
 
   if (loading) {
@@ -156,9 +154,8 @@ const Dashboard = () => {
         ))}
       </div>
 
-      {/* Main Content Grid */}
+      {/* ... rest of component unchanged ... */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Activity Chart */}
         <motion.div 
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -202,14 +199,12 @@ const Dashboard = () => {
           </div>
         </motion.div>
 
-        {/* Pending Actions */}
         <motion.div 
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.3 }}
           className="space-y-5"
         >
-          {/* Pending Approvals Card */}
           <div className="bg-[#12121a] border border-white/[0.08] rounded-2xl p-6 hover:border-amber-500/20 transition-all">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-lg font-semibold text-white">Pending Actions</h2>
@@ -261,7 +256,6 @@ const Dashboard = () => {
             </div>
           </div>
 
-          {/* Quick Stats */}
           <div className="bg-[#12121a] border border-white/[0.08] rounded-2xl p-6">
             <h3 className="text-sm font-semibold text-gray-400 mb-4 uppercase tracking-wider">Quick Stats</h3>
             <div className="grid grid-cols-2 gap-4">
@@ -280,9 +274,7 @@ const Dashboard = () => {
         </motion.div>
       </div>
 
-      {/* Bottom Section */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Recent Activity */}
         <motion.div 
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -320,7 +312,6 @@ const Dashboard = () => {
           </div>
         </motion.div>
 
-        {/* Top Songs */}
         <motion.div 
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -369,7 +360,6 @@ const Dashboard = () => {
         </motion.div>
       </div>
 
-      {/* Footer */}
       <motion.div 
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
