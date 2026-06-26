@@ -1,7 +1,7 @@
 import axios from 'axios'
 
 const api = axios.create({
-  baseURL: 'https://turkana-connect-api.onrender.com'
+  baseURL: 'https://turkana-connect-api.onrender.com/api/v1'
 })
 
 api.interceptors.request.use((config) => {

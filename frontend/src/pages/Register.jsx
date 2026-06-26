@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Music2, Mail, Lock, User, Eye, EyeOff, ArrowRight, Sparkles, Check, X } from 'lucide-react'
-import axios from 'axios'
+import api from '../api/axios'
 
 const Register = () => {
   const [formData, setFormData] = useState({
@@ -58,7 +58,7 @@ const Register = () => {
     setError('')
     setLoading(true)
     try {
-      await axios.post('/api/v1/auth/register', {
+      await api.post('/auth/register', {
         username: formData.username,
         email: formData.email,
         password: formData.password,
@@ -82,12 +82,6 @@ const Register = () => {
     delay: Math.random() * 5
   }))
 
-  const inputFields = [
-    { name: 'username', label: 'Username', type: 'text', icon: User, placeholder: 'johndoe', required: true, half: true },
-    { name: 'full_name', label: 'Full Name', type: 'text', icon: null, placeholder: 'John Doe', required: false, half: true },
-    { name: 'email', label: 'Email Address', type: 'email', icon: Mail, placeholder: 'you@example.com', required: true, half: false },
-  ]
-
   return (
     <div className="min-h-screen flex items-center justify-center relative overflow-hidden bg-[#0a0a0f] py-8">
       {/* Animated Background */}
@@ -95,7 +89,7 @@ const Register = () => {
         <div className="absolute top-0 right-1/4 w-[600px] h-[600px] bg-violet-600/20 rounded-full blur-[120px] animate-pulse" />
         <div className="absolute bottom-0 left-1/4 w-[500px] h-[500px] bg-fuchsia-600/15 rounded-full blur-[100px] animate-pulse" style={{ animationDelay: '2s' }} />
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-indigo-600/10 rounded-full blur-[150px]" />
-        
+
         {particles.map((p) => (
           <motion.div
             key={p.id}
@@ -130,7 +124,7 @@ const Register = () => {
               <Sparkles className="w-5 h-5 text-yellow-400" />
             </motion.div>
           </motion.div>
-          
+
           <h1 className="text-4xl font-bold text-white mb-3 tracking-tight">Join Turkana Music</h1>
           <p className="text-gray-400 text-lg">
             Create your account and start your <span className="text-fuchsia-400 font-medium">musical journey</span>
@@ -140,7 +134,7 @@ const Register = () => {
         {/* Form Card */}
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3, duration: 0.5 }} className="relative">
           <div className="absolute -inset-0.5 bg-gradient-to-r from-violet-500/20 via-fuchsia-500/20 to-pink-500/20 rounded-3xl blur-sm" />
-          
+
           <form onSubmit={handleSubmit} className="relative bg-[#12121a]/80 backdrop-blur-xl border border-white/[0.08] rounded-3xl p-8 shadow-2xl">
             <AnimatePresence mode="wait">
               {error && (
@@ -201,7 +195,7 @@ const Register = () => {
                   {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                 </button>
               </div>
-              
+
               {/* Password Strength Indicator */}
               {formData.password && (
                 <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} className="mt-3 space-y-2">

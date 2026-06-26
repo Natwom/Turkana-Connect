@@ -8,7 +8,7 @@ from app.config import settings
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 
-@router.post("/register", response_model=schemas.UserResponse, status_code=201)
+@router.post("/register", status_code=201)
 def register(user_data: schemas.UserCreate, db: Session = Depends(get_db)):
     if db.query(models.User).filter(models.User.email == user_data.email).first():
         raise HTTPException(400, "Email already registered")

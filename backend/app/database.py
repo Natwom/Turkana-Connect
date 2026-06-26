@@ -4,12 +4,14 @@ from sqlalchemy.orm import sessionmaker
 from app.config import settings
 import os
 
-# Use SQLite for development (no PostgreSQL needed)
-# For PostgreSQL, set DATABASE_URL in .env to: postgresql://user:pass@localhost/dbname
-DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./turkana_music.db")
+DATABASE_URL = os.getenv("DATABASE_URL", settings.DATABASE_URL)
 
-# SQLite needs check_same_thread=False for FastAPI async
-connect_args = {"check_same_thread": False} if DATABASE_URL.startswith("sqlite") else {}
+# Neon PostgreSQL requires SSL. SQLite needs check_same_thread=False.
+connect_args = {}
+if DATABASE_URL.startswith("postgresql"):
+    connect_args = {"sslmode": "require"}
+elif DATABASE_URL.startswith("sqlite"):
+    connect_args = {"check_same_thread": False}
 
 engine = create_engine(DATABASE_URL, connect_args=connect_args)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
