@@ -9,20 +9,16 @@ import {
   Pause,
   Clock,
   Headphones,
-  Heart,
   MoreHorizontal,
-  Filter,
   RefreshCw,
   Download,
   ChevronDown,
   AlertTriangle,
   CheckCircle2,
   Trash2,
-  Eye,
-  Disc,
-  Volume2
+  Eye
 } from 'lucide-react'
-import axios from 'axios'
+import api from '../api/axios'  // ✅ FIXED
 
 const Songs = () => {
   const [songs, setSongs] = useState([])
@@ -41,7 +37,7 @@ const Songs = () => {
   const fetchSongs = async () => {
     try {
       setRefreshing(true)
-      const res = await axios.get('/api/v1/songs?limit=100&approved_only=false')
+      const res = await api.get('/api/v1/songs?limit=100&approved_only=false')  // ✅ FIXED
       setSongs(res.data)
     } catch (err) {
       console.error('Failed to fetch songs:', err)
@@ -53,7 +49,7 @@ const Songs = () => {
 
   const handleApprove = async (id) => {
     try {
-      await axios.post(`/api/v1/admin/songs/${id}/approve`)
+      await api.post(`/api/v1/admin/songs/${id}/approve`)  // ✅ FIXED
       fetchSongs()
     } catch (err) {
       console.error('Failed to approve:', err)
@@ -63,7 +59,7 @@ const Songs = () => {
   const handleDelete = async (id) => {
     if (!window.confirm('Are you sure you want to delete this song?')) return
     try {
-      await axios.delete(`/api/v1/admin/songs/${id}`)
+      await api.delete(`/api/v1/admin/songs/${id}`)  // ✅ FIXED
       fetchSongs()
     } catch (err) {
       console.error('Failed to delete:', err)
