@@ -31,7 +31,25 @@ const Login = () => {
       await login(email, password)
       navigate('/')
     } catch (err) {
-      setError(err.response?.data?.detail || 'Invalid credentials. Please try again.')
+      // DEBUG: Show the FULL error, not just "Invalid credentials"
+      let errorMsg = 'Invalid credentials. Please try again.'
+      
+      if (!err.response) {
+        // Network error - backend not reachable
+        errorMsg = `Network error: Cannot reach backend. Check console for details.`
+        console.error('Network error details:', err)
+      } else if (err.response.status === 404) {
+        errorMsg = `API endpoint not found (${err.response.config?.url}). Check baseURL config.`
+      } else if (err.response.status === 401) {
+        errorMsg = err.response.data?.detail || 'Incorrect email or password.'
+      } else if (err.response.status === 403) {
+        errorMsg = 'Account is disabled. Contact support.'
+      } else {
+        errorMsg = `Error ${err.response.status}: ${err.response.data?.detail || 'Unknown error'}`
+      }
+      
+      setError(errorMsg)
+      console.error('Login error:', err)
     } finally {
       setLoading(false)
     }
@@ -39,7 +57,6 @@ const Login = () => {
 
   return (
     <div className="min-h-screen flex items-center justify-center relative overflow-hidden bg-[#0a0a0f]">
-      {/* Background Effects */}
       <div className="absolute inset-0 overflow-hidden">
         <div className="absolute top-0 left-1/4 w-[600px] h-[600px] bg-violet-600/10 rounded-full blur-[120px] animate-pulse" />
         <div className="absolute bottom-0 right-1/4 w-[500px] h-[500px] bg-fuchsia-600/10 rounded-full blur-[100px] animate-pulse" style={{ animationDelay: '2s' }} />
@@ -51,7 +68,6 @@ const Login = () => {
         transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
         className="w-full max-w-md relative z-10 px-4"
       >
-        {/* Logo */}
         <motion.div 
           className="text-center mb-10"
           initial={{ opacity: 0, y: -20 }}
@@ -80,7 +96,6 @@ const Login = () => {
           <p className="text-gray-400 text-lg">Turkana Music Hub Management</p>
         </motion.div>
 
-        {/* Form */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -98,15 +113,14 @@ const Login = () => {
                   exit={{ opacity: 0, height: 0, marginBottom: 0 }}
                   className="overflow-hidden"
                 >
-                  <div className="p-4 bg-red-500/10 border border-red-500/20 rounded-xl text-red-400 text-sm flex items-center gap-3">
-                    <AlertCircle className="w-5 h-5 shrink-0" />
-                    {error}
+                  <div className="p-4 bg-red-500/10 border border-red-500/20 rounded-xl text-red-400 text-sm flex items-start gap-3">
+                    <AlertCircle className="w-5 h-5 shrink-0 mt-0.5" />
+                    <div className="break-all">{error}</div>
                   </div>
                 </motion.div>
               )}
             </AnimatePresence>
 
-            {/* Email */}
             <div>
               <label className="block text-sm font-medium text-gray-300 mb-2.5 ml-1">Email</label>
               <div className="relative group">
@@ -118,7 +132,7 @@ const Login = () => {
                   onFocus={() => setFocusedField('email')}
                   onBlur={() => setFocusedField(null)}
                   className="w-full bg-[#1a1a2e] border border-white/[0.08] rounded-xl py-3.5 pl-12 pr-4 text-white placeholder-gray-500 focus:outline-none focus:border-fuchsia-500/50 focus:ring-2 focus:ring-fuchsia-500/20 transition-all duration-300 hover:border-white/[0.15]" 
-                  placeholder="admin@turkana.music" 
+                  placeholder="boss@turkana.music" 
                   required 
                 />
                 <motion.div
@@ -130,7 +144,6 @@ const Login = () => {
               </div>
             </div>
 
-            {/* Password */}
             <div>
               <label className="block text-sm font-medium text-gray-300 mb-2.5 ml-1">Password</label>
               <div className="relative group">
@@ -161,7 +174,6 @@ const Login = () => {
               </div>
             </div>
 
-            {/* Submit */}
             <motion.button 
               type="submit" 
               disabled={loading}
@@ -187,7 +199,6 @@ const Login = () => {
           </form>
         </motion.div>
 
-        {/* Footer */}
         <motion.p 
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
