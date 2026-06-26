@@ -38,8 +38,35 @@ def seed_categories():
     finally:
         db.close()
 
-# Run seed on startup
+def seed_admin():
+    """Create default admin user if none exists"""
+    db = SessionLocal()
+    try:
+        existing = db.query(models.User).filter(models.User.role == "admin").first()
+        if not existing:
+            from app.auth import get_password_hash
+            admin = models.User(
+                email="admin@turkana.music",
+                username="admin",
+                full_name="System Administrator",
+                hashed_password=get_password_hash("AdminPass123!"),
+                role="admin",
+                is_active=True
+            )
+            db.add(admin)
+            db.commit()
+            print("✅ Admin user created: admin@turkana.music / AdminPass123!")
+        else:
+            print(f"ℹ️ Admin user already exists: {existing.email}")
+    except Exception as e:
+        print(f"❌ Error seeding admin: {e}")
+        db.rollback()
+    finally:
+        db.close()
+
+# Run seeds on startup
 seed_categories()
+seed_admin()
 
 app = FastAPI(
     title="Turkana Music Hub API",
@@ -48,14 +75,15 @@ app = FastAPI(
 )
 
 # CORS - Updated for production
-# Add your actual deployed frontend URLs here
+# Add your actual deployed frontend and admin URLs here
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
-        "http://localhost:5173",      # Frontend dev
-        "http://localhost:5174",      # Admin dev
-        "https://apiaro-music.onrender.com",           # Your deployed frontend
-        "https://turkana-connect-admin.onrender.com",  # Your deployed admin
+        "http://localhost:5173",           # Frontend dev
+        "http://localhost:5174",           # Admin dev
+        "https://apiaro-music.onrender.com",         # Deployed frontend
+        "https://turkana-connect-admin.onrender.com",  # Deployed admin (legacy)
+        "https://apiaro-music-admin.onrender.com",   # Deployed admin (actual)
     ],
     allow_credentials=True,
     allow_methods=["*"],
