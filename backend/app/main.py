@@ -1,6 +1,7 @@
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
+import os
 from app.config import settings
 from app.database import engine, Base, SessionLocal
 from app.routers import (
@@ -75,23 +76,28 @@ app = FastAPI(
 )
 
 # CORS - Updated for production
-# Add your actual deployed frontend and admin URLs here
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
-        "http://localhost:5173",           # Frontend dev
-        "http://localhost:5174",           # Admin dev
-        "https://apiaro-music.onrender.com",         # Deployed frontend
-        "https://turkana-connect-admin.onrender.com",  # Deployed admin (legacy)
-        "https://apiaro-music-admin.onrender.com",   # Deployed admin (actual)
+        "http://localhost:5173",
+        "http://localhost:5174",
+        "https://apiaro-music.onrender.com",
+        "https://turkana-connect-admin.onrender.com",
+        "https://apiaro-music-admin.onrender.com",
     ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# Static files for uploads
-app.mount("/uploads", StaticFiles(directory=settings.UPLOAD_DIR), name="uploads")
+# FIX: Only mount static files if directory exists (for local dev)
+# Cloudinary handles all uploads in production, so this is optional
+upload_dir = settings.UPLOAD_DIR
+if os.path.isdir(upload_dir):
+    app.mount("/uploads", StaticFiles(directory=upload_dir), name="uploads")
+    print(f"📁 Static files mounted at /uploads from {upload_dir}")
+else:
+    print(f"⚠️ Upload directory '{upload_dir}' not found. Skipping static mount. Using Cloudinary for file storage.")
 
 # API routes
 app.include_router(auth.router, prefix="/api/v1")
