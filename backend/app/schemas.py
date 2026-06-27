@@ -182,10 +182,10 @@ class SongCreate(SongBase):
 
 class SongResponse(SongBase):
     id: int
-    artist_id: int
+    artist_id: Optional[int] = None   # ← FIXED: was `int`, now `Optional[int]`
     album_id: Optional[int] = None
     category_id: Optional[int] = None
-    audio_url: str
+    audio_url: Optional[str] = None   # ← FIXED: was `str`, now `Optional[str]`
     cover_url: Optional[str] = None
     is_approved: bool
     play_count: int
