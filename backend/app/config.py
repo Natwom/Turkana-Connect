@@ -14,7 +14,8 @@ class Settings(BaseSettings):
     SMTP_PORT: int = 587
     SMTP_USER: str = ""
     SMTP_PASSWORD: str = ""
-    UPLOAD_DIR: str = "uploads"
+    # Use absolute path for Render persistence
+    UPLOAD_DIR: str = os.getenv("UPLOAD_DIR", os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "uploads"))
     MAX_AUDIO_SIZE: int = 50 * 1024 * 1024
     MAX_IMAGE_SIZE: int = 5 * 1024 * 1024
     

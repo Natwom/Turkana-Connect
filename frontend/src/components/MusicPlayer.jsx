@@ -6,6 +6,20 @@ import {
 } from 'lucide-react'
 import { usePlayer } from '../context/PlayerContext'
 
+const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:8000'
+
+const getAudioUrl = (path) => {
+  if (!path) return ''
+  if (path.startsWith('http')) return path
+  return `${API_BASE}${path}`
+}
+
+const getImageUrl = (path) => {
+  if (!path) return '/default-cover.jpg'
+  if (path.startsWith('http')) return path
+  return `${API_BASE}${path}`
+}
+
 const MusicPlayer = () => {
   const player = usePlayer() || {}
   const { 
@@ -17,20 +31,43 @@ const MusicPlayer = () => {
   const [duration, setDuration] = useState(0)
   const [volume, setVolume] = useState(0.8)
   const [isMuted, setIsMuted] = useState(false)
+  const [audioError, setAudioError] = useState(false)
   const audioRef = useRef(null)
 
   useEffect(() => {
     if (currentSong && audioRef.current) {
-      audioRef.current.src = currentSong.audio_url
-      if (isPlaying) audioRef.current.play().catch(() => {})
+      const audioUrl = getAudioUrl(currentSong.audio_url)
+      console.log('Loading audio:', audioUrl)
+      setAudioError(false)
+      audioRef.current.src = audioUrl
+      audioRef.current.load()
+      if (isPlaying) {
+        audioRef.current.play().catch(err => {
+          console.error('Audio play failed:', err)
+          setAudioError(true)
+        })
+      }
     }
   }, [currentSong])
 
   useEffect(() => {
     if (audioRef.current) {
-      isPlaying ? audioRef.current.play().catch(() => {}) : audioRef.current.pause()
+      if (isPlaying) {
+        audioRef.current.play().catch(err => {
+          console.error('Audio play failed:', err)
+          setAudioError(true)
+        })
+      } else {
+        audioRef.current.pause()
+      }
     }
   }, [isPlaying])
+
+  useEffect(() => {
+    if (audioRef.current) {
+      audioRef.current.volume = isMuted ? 0 : volume
+    }
+  }, [volume, isMuted])
 
   const handleTimeUpdate = () => {
     if (audioRef.current) {
@@ -45,6 +82,11 @@ const MusicPlayer = () => {
       audioRef.current.currentTime = time
       setProgress(time)
     }
+  }
+
+  const handleAudioError = (e) => {
+    console.error('Audio element error:', e)
+    setAudioError(true)
   }
 
   const formatTime = (seconds) => {
@@ -67,13 +109,15 @@ const MusicPlayer = () => {
         onTimeUpdate={handleTimeUpdate}
         onEnded={() => playNext?.()}
         onLoadedMetadata={handleTimeUpdate}
+        onError={handleAudioError}
+        crossOrigin="anonymous"
       />
 
       <div className="flex items-center gap-4">
         {/* Song Info */}
         <div className="flex items-center gap-3 w-1/4 min-w-[200px]">
           <img 
-            src={currentSong.cover_url || '/default-cover.jpg'} 
+            src={getImageUrl(currentSong.cover_url)} 
             alt={currentSong.title}
             className="w-14 h-14 rounded-xl object-cover shadow-lg"
             onError={(e) => { e.target.src = '/default-cover.jpg' }}
@@ -81,6 +125,9 @@ const MusicPlayer = () => {
           <div className="min-w-0">
             <h4 className="font-semibold text-sm truncate">{currentSong.title}</h4>
             <p className="text-xs text-gray-400 truncate">{currentSong.artist?.stage_name}</p>
+            {audioError && (
+              <p className="text-xs text-red-400">Failed to load audio</p>
+            )}
           </div>
           <button className="p-2 hover:bg-white/5 rounded-lg transition-colors">
             <Heart className="w-4 h-4 text-gray-400" />
