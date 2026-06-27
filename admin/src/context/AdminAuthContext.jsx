@@ -19,7 +19,7 @@ export const AdminAuthProvider = ({ children }) => {
 
   const fetchAdmin = async () => {
     try {
-      const res = await api.get('/auth/me')
+      const res = await api.get('/api/v1/auth/me')  // ← was: /auth/me
       if (res.data.role !== 'admin') {
         throw new Error('Not an admin')
       }
@@ -36,7 +36,7 @@ export const AdminAuthProvider = ({ children }) => {
     params.append('username', email)
     params.append('password', password)
 
-    const res = await api.post('/auth/login', params, {
+    const res = await api.post('/api/v1/auth/login', params, {  // ← was: /auth/login
       headers: {
         'Content-Type': 'application/x-www-form-urlencoded'
       }
