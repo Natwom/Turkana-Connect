@@ -1,6 +1,10 @@
 import cloudinary
 import cloudinary.uploader
 from fastapi import UploadFile, HTTPException
+import logging
+
+# Setup logging
+logger = logging.getLogger(__name__)
 
 # Cloudinary config - your credentials
 cloudinary.config(
@@ -21,9 +25,12 @@ async def upload_file(upload_file: UploadFile, folder: str) -> str:
     """Upload file to Cloudinary and return public URL"""
     
     content_type = upload_file.content_type or ""
+    filename = upload_file.filename or "unknown"
+    
+    logger.info(f"Uploading file: {filename}, type: {content_type}, to folder: {folder}")
     
     if folder == "audio":
-        allowed = {"audio/mpeg", "audio/wav", "audio/mp3", "audio/ogg", "audio/x-m4a", "audio/m4a", "audio/webm"}
+        allowed = {"audio/mpeg", "audio/wav", "audio/mp3", "audio/ogg", "audio/x-m4a", "audio/m4a", "audio/webm", "audio/flac"}
         resource_type = "video"  # Cloudinary uses "video" for audio files
         max_size = 50 * 1024 * 1024  # 50MB
     else:
@@ -32,6 +39,7 @@ async def upload_file(upload_file: UploadFile, folder: str) -> str:
         max_size = 5 * 1024 * 1024  # 5MB
     
     if content_type not in allowed:
+        logger.error(f"Invalid file type: {content_type}. Allowed: {allowed}")
         raise HTTPException(400, f"Invalid file type: {content_type}. Allowed: {', '.join(allowed)}")
     
     # Read and validate
@@ -41,7 +49,9 @@ async def upload_file(upload_file: UploadFile, folder: str) -> str:
     if len(contents) == 0:
         raise HTTPException(400, "Uploaded file is empty")
     if len(contents) > max_size:
-        raise HTTPException(400, f"File too large. Max: {max_size // 1024 // 1024}MB")
+        raise HTTPException(400, f"File too large ({len(contents) / 1024 / 1024:.1f}MB). Max: {max_size // 1024 // 1024}MB")
+    
+    logger.info(f"File size: {len(contents)} bytes, uploading to Cloudinary...")
     
     # Upload to Cloudinary
     try:
@@ -53,8 +63,10 @@ async def upload_file(upload_file: UploadFile, folder: str) -> str:
             unique_filename=True,
             overwrite=False
         )
+        logger.info(f"Cloudinary upload successful: {result.get('secure_url')}")
         return result["secure_url"]
     except Exception as e:
+        logger.error(f"Cloudinary upload failed: {str(e)}")
         raise HTTPException(500, f"Upload failed: {str(e)}")
 
 async def delete_file(file_url: str):
@@ -64,12 +76,10 @@ async def delete_file(file_url: str):
     
     try:
         # Extract public_id from Cloudinary URL
-        # Format: https://res.cloudinary.com/djlnqcwmz/video/upload/v1234567890/turkana-music/audio/abc123.mp3
         parts = file_url.split("/upload/")
         if len(parts) != 2:
             return
         
-        # Remove version number (v1234567890/) if present
         public_id_with_version = parts[1]
         path_parts = public_id_with_version.split("/")
         
@@ -78,13 +88,11 @@ async def delete_file(file_url: str):
         else:
             public_id = public_id_with_version
         
-        # Remove file extension for destroy()
         public_id = ".".join(public_id.split(".")[:-1]) if "." in public_id else public_id
         
-        # Determine resource type
         resource_type = "video" if "/video/" in file_url else "image"
         
         cloudinary.uploader.destroy(public_id, resource_type=resource_type)
-        print(f"Deleted from Cloudinary: {public_id}")
+        logger.info(f"Deleted from Cloudinary: {public_id}")
     except Exception as e:
-        print(f"Failed to delete from Cloudinary: {e}")
+        logger.error(f"Failed to delete from Cloudinary: {e}")
