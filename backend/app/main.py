@@ -76,22 +76,31 @@ app = FastAPI(
 )
 
 # CORS - Updated for production
+# Add your actual deployed frontend URL to this list
+origins = [
+    "http://localhost:5173",
+    "http://localhost:5174",
+    "https://turkana-connect-api.onrender.com",
+    "https://turkana-connect-admin.onrender.com",
+    "https://apiaro-music.onrender.com",
+    "https://apiaro-music-admin.onrender.com",
+    # ADD YOUR FRONTEND URL HERE, e.g.:
+    # "https://turkana-connect.onrender.com",
+    # "https://your-frontend-url.onrender.com",
+]
+
+# Optional: Allow all origins in development (comment out the specific list above if you prefer)
+# origins = ["*"]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:5173",
-        "http://localhost:5174",
-        "https://apiaro-music.onrender.com",
-        "https://turkana-connect-admin.onrender.com",
-        "https://apiaro-music-admin.onrender.com",
-    ],
+    allow_origins=origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
 # FIX: Only mount static files if directory exists (for local dev)
-# Cloudinary handles all uploads in production, so this is optional
 upload_dir = settings.UPLOAD_DIR
 if os.path.isdir(upload_dir):
     app.mount("/uploads", StaticFiles(directory=upload_dir), name="uploads")
