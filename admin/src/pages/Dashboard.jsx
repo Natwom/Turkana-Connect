@@ -37,7 +37,7 @@ const Dashboard = () => {
   const fetchStats = async () => {
     try {
       setRefreshing(true)
-      const res = await api.get('/admin/dashboard')
+      const res = await api.get('/api/v1/admin/dashboard')  // ← FIXED: was /admin/dashboard
       setStats(res.data)
       setLastUpdated(new Date())
     } catch (err) {
@@ -154,7 +154,6 @@ const Dashboard = () => {
         ))}
       </div>
 
-      {/* ... rest of component unchanged ... */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <motion.div 
           initial={{ opacity: 0, y: 20 }}

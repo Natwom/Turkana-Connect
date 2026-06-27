@@ -22,7 +22,7 @@ import {
   CheckCircle2,
   X
 } from 'lucide-react'
-import api from '../api/axios'  // ✅ FIXED: Use configured API instance
+import api from '../api/axios'
 
 const Users = () => {
   const [users, setUsers] = useState([])
@@ -41,7 +41,7 @@ const Users = () => {
   const fetchUsers = async () => {
     try {
       setRefreshing(true)
-      const res = await api.get('/admin/users')  // ✅ FIXED: Use api instance
+      const res = await api.get('/api/v1/admin/users')  // ← FIXED: was /admin/users
       setUsers(res.data)
     } catch (err) {
       console.error('Failed to fetch users:', err)
@@ -57,7 +57,7 @@ const Users = () => {
   const handleDeleteUser = async (userId) => {
     if (!confirm('Are you sure you want to delete this user?')) return
     try {
-      await api.delete(`/admin/users/${userId}`)  // ✅ FIXED: Use api instance + correct endpoint
+      await api.delete(`/api/v1/admin/users/${userId}`)  // ← FIXED: was /admin/users/${userId}
       setUsers(prev => prev.filter(u => u.id !== userId))
     } catch (err) {
       console.error('Failed to delete user:', err)
@@ -81,7 +81,7 @@ const Users = () => {
     total: users.length,
     admin: users.filter(u => u.role === 'admin').length,
     artist: users.filter(u => u.role === 'artist').length,
-    listener: users.filter(u => u.role === 'user' || !u.role).length,  // ✅ FIXED: 'user' not 'listener'
+    listener: users.filter(u => u.role === 'user' || !u.role).length,
     active: users.filter(u => u.is_active).length,
     inactive: users.filter(u => !u.is_active).length
   }
@@ -93,7 +93,7 @@ const Users = () => {
       case 'artist':
         return { icon: Music, color: 'text-fuchsia-400', bg: 'bg-fuchsia-500/10', border: 'border-fuchsia-500/20', label: 'Artist' }
       default:
-        return { icon: User, color: 'text-gray-400', bg: 'bg-gray-500/10', border: 'border-gray-500/20', label: 'User' }  // ✅ FIXED: 'User' not 'Listener'
+        return { icon: User, color: 'text-gray-400', bg: 'bg-gray-500/10', border: 'border-gray-500/20', label: 'User' }
     }
   }
 
@@ -112,7 +112,6 @@ const Users = () => {
 
   return (
     <div className="min-h-screen pb-20 space-y-8">
-      {/* Header */}
       <motion.div 
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -144,7 +143,6 @@ const Users = () => {
         </div>
       </motion.div>
 
-      {/* Stats Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {[
           { label: 'Total Users', value: stats.total, icon: User, color: 'from-blue-500 to-cyan-500', bg: 'bg-blue-500/10', text: 'text-blue-400' },
@@ -174,7 +172,6 @@ const Users = () => {
         ))}
       </div>
 
-      {/* Filters */}
       <motion.div 
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -220,7 +217,6 @@ const Users = () => {
         </div>
       </motion.div>
 
-      {/* Users Table */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -345,7 +341,6 @@ const Users = () => {
         )}
       </motion.div>
 
-      {/* User Detail Modal */}
       <AnimatePresence>
         {showDetailModal && selectedUser && (
           <motion.div

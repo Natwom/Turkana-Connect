@@ -22,7 +22,7 @@ import {
   Disc,
   Volume2
 } from 'lucide-react'
-import axios from 'axios'
+import api from '../api/axios'  // ← FIXED: Use configured API instance, not raw axios
 
 const Songs = () => {
   const [songs, setSongs] = useState([])
@@ -41,10 +41,14 @@ const Songs = () => {
   const fetchSongs = async () => {
     try {
       setRefreshing(true)
-      const res = await axios.get('/api/v1/songs?limit=100&approved_only=false')
+      // Fetch all songs — backend must support approved_only param, or use admin endpoint
+      const res = await api.get('/api/v1/songs?limit=100&approved_only=false')
       setSongs(res.data)
     } catch (err) {
       console.error('Failed to fetch songs:', err)
+      if (err.response?.status === 404) {
+        console.error('Endpoint not found — check backend songs router')
+      }
     } finally {
       setLoading(false)
       setRefreshing(false)
@@ -53,20 +57,23 @@ const Songs = () => {
 
   const handleApprove = async (id) => {
     try {
-      await axios.post(`/api/v1/admin/songs/${id}/approve`)
+      await api.post(`/api/v1/admin/songs/${id}/approve`)
       fetchSongs()
     } catch (err) {
       console.error('Failed to approve:', err)
+      alert(err.response?.data?.detail || 'Failed to approve song')
     }
   }
 
   const handleDelete = async (id) => {
     if (!window.confirm('Are you sure you want to delete this song?')) return
     try {
-      await axios.delete(`/api/v1/admin/songs/${id}`)
+      // NOTE: This endpoint must exist in your backend admin.py
+      await api.delete(`/api/v1/admin/songs/${id}`)
       fetchSongs()
     } catch (err) {
       console.error('Failed to delete:', err)
+      alert(err.response?.data?.detail || 'Failed to delete song')
     }
   }
 

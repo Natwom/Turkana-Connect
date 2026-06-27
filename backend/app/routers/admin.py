@@ -88,6 +88,29 @@ def approve_song(song_id: int, current_user: models.User = Depends(auth.require_
     db.commit()
     return {"message": "Song approved"}
 
+# ← NEW: Delete song endpoint
+@router.delete("/songs/{song_id}")
+def delete_song(
+    song_id: int,
+    current_user: models.User = Depends(auth.require_admin),
+    db: Session = Depends(get_db)
+):
+    song = db.query(models.Song).filter(models.Song.id == song_id).first()
+    if not song:
+        raise HTTPException(404, "Song not found")
+    
+    log = models.AdminLog(
+        admin_id=current_user.id,
+        action="delete_song",
+        entity_type="song",
+        entity_id=song_id
+    )
+    db.add(log)
+    
+    db.delete(song)
+    db.commit()
+    return {"message": "Song deleted"}
+
 @router.get("/users", response_model=List[schemas.UserResponse])
 def list_users(
     skip: int = 0,
