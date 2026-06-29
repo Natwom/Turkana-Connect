@@ -3,10 +3,8 @@ import cloudinary.uploader
 from fastapi import UploadFile, HTTPException
 import logging
 
-# Setup logging
 logger = logging.getLogger(__name__)
 
-# Cloudinary config - your credentials
 cloudinary.config(
     cloud_name="djlnqcwmz",
     api_key="437893188264331",
@@ -14,37 +12,35 @@ cloudinary.config(
     secure=True
 )
 
-# Folder mapping for your app
 FOLDERS = {
     "audio": "turkana-music/audio",
     "covers": "turkana-music/covers",
     "images": "turkana-music/images"
 }
 
-async def upload_file(upload_file: UploadFile, folder: str) -> str:
+async def upload_file(file: UploadFile, folder: str) -> str:
     """Upload file to Cloudinary and return public URL"""
     
-    content_type = upload_file.content_type or ""
-    filename = upload_file.filename or "unknown"
+    content_type = file.content_type or ""
+    filename = file.filename or "unknown"
     
     logger.info(f"Uploading file: {filename}, type: {content_type}, to folder: {folder}")
     
     if folder == "audio":
         allowed = {"audio/mpeg", "audio/wav", "audio/mp3", "audio/ogg", "audio/x-m4a", "audio/m4a", "audio/webm", "audio/flac"}
-        resource_type = "video"  # Cloudinary uses "video" for audio files
-        max_size = 50 * 1024 * 1024  # 50MB
+        resource_type = "video"
+        max_size = 50 * 1024 * 1024
     else:
         allowed = {"image/jpeg", "image/png", "image/webp", "image/jpg", "image/gif"}
         resource_type = "image"
-        max_size = 5 * 1024 * 1024  # 5MB
+        max_size = 5 * 1024 * 1024
     
     if content_type not in allowed:
         logger.error(f"Invalid file type: {content_type}. Allowed: {allowed}")
         raise HTTPException(400, f"Invalid file type: {content_type}. Allowed: {', '.join(allowed)}")
     
-    # Read and validate
-    await upload_file.seek(0)
-    contents = await upload_file.read()
+    await file.seek(0)
+    contents = await file.read()
     
     if len(contents) == 0:
         raise HTTPException(400, "Uploaded file is empty")
@@ -53,7 +49,6 @@ async def upload_file(upload_file: UploadFile, folder: str) -> str:
     
     logger.info(f"File size: {len(contents)} bytes, uploading to Cloudinary...")
     
-    # Upload to Cloudinary
     try:
         result = cloudinary.uploader.upload(
             contents,
@@ -75,7 +70,6 @@ async def delete_file(file_url: str):
         return
     
     try:
-        # Extract public_id from Cloudinary URL
         parts = file_url.split("/upload/")
         if len(parts) != 2:
             return
