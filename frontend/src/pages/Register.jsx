@@ -57,7 +57,7 @@ const Register = () => {
     setError('')
     setLoading(true)
     try {
-      await api.post('/auth/register', {
+      await api.post('/api/v1/auth/register', {
         username: formData.username,
         email: formData.email,
         password: formData.password,

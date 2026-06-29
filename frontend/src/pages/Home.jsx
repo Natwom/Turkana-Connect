@@ -9,7 +9,7 @@ import {
   Radio, Award, Heart, Share2, BarChart3
 } from 'lucide-react'
 
-// FIXED: Uses VITE_API_URL instead of hardcoded localhost
+// FIXED: baseUrl now matches axios baseURL (no /api/v1)
 const getImageUrl = (path) => {
   if (!path) return '/default-cover.jpg'
   if (path.startsWith('http')) return path
