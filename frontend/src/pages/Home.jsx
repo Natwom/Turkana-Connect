@@ -9,7 +9,6 @@ import {
   Radio, Award, Heart, Share2, BarChart3
 } from 'lucide-react'
 
-// FIXED: baseUrl now matches axios baseURL (no /api/v1)
 const getImageUrl = (path) => {
   if (!path) return '/default-cover.jpg'
   if (path.startsWith('http')) return path
@@ -34,23 +33,61 @@ const Home = () => {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [hoveredSong, setHoveredSong] = useState(null)
+  const [debugInfo, setDebugInfo] = useState('')
 
   useEffect(() => {
     const fetchData = async () => {
       try {
         setLoading(true)
         setError(null)
+        setDebugInfo('Starting fetches...')
         
-        const [songsRes, artistsRes, catsRes] = await Promise.all([
-          api.get('/api/v1/songs?limit=12'),
-          api.get('/api/v1/artists?limit=8'),
-          api.get('/api/v1/categories')
-        ])
+        // Fetch each endpoint individually with error isolation
+        let songsData = []
+        let artistsData = []
+        let catsData = []
+        let errors = []
 
-        const songsData = Array.isArray(songsRes.data) ? songsRes.data : []
-        const artistsData = Array.isArray(artistsRes.data) ? artistsRes.data : []
-        const catsData = Array.isArray(catsRes.data) ? catsRes.data : []
+        // Fetch songs
+        try {
+          console.log('Fetching songs from:', api.defaults.baseURL + '/api/v1/songs?limit=12')
+          const songsRes = await api.get('/api/v1/songs?limit=12')
+          console.log('Songs response:', songsRes.status, songsRes.data)
+          songsData = Array.isArray(songsRes.data) ? songsRes.data : []
+          setDebugInfo(prev => prev + `\n✅ Songs: ${songsData.length} items`)
+        } catch (e) {
+          console.error('Songs fetch FAILED:', e.message, e.response?.status, e.response?.data)
+          errors.push(`Songs: ${e.message} (status: ${e.response?.status || 'network'})`)
+          setDebugInfo(prev => prev + `\n❌ Songs failed: ${e.message}`)
+        }
 
+        // Fetch artists
+        try {
+          console.log('Fetching artists from:', api.defaults.baseURL + '/api/v1/artists?limit=8')
+          const artistsRes = await api.get('/api/v1/artists?limit=8')
+          console.log('Artists response:', artistsRes.status, artistsRes.data)
+          artistsData = Array.isArray(artistsRes.data) ? artistsRes.data : []
+          setDebugInfo(prev => prev + `\n✅ Artists: ${artistsData.length} items`)
+        } catch (e) {
+          console.error('Artists fetch FAILED:', e.message, e.response?.status, e.response?.data)
+          errors.push(`Artists: ${e.message} (status: ${e.response?.status || 'network'})`)
+          setDebugInfo(prev => prev + `\n❌ Artists failed: ${e.message}`)
+        }
+
+        // Fetch categories
+        try {
+          console.log('Fetching categories from:', api.defaults.baseURL + '/api/v1/categories')
+          const catsRes = await api.get('/api/v1/categories')
+          console.log('Categories response:', catsRes.status, catsRes.data)
+          catsData = Array.isArray(catsRes.data) ? catsRes.data : []
+          setDebugInfo(prev => prev + `\n✅ Categories: ${catsData.length} items`)
+        } catch (e) {
+          console.error('Categories fetch FAILED:', e.message, e.response?.status, e.response?.data)
+          errors.push(`Categories: ${e.message} (status: ${e.response?.status || 'network'})`)
+          setDebugInfo(prev => prev + `\n❌ Categories failed: ${e.message}`)
+        }
+
+        // Set data even if some fetches failed
         setTrending(songsData.slice(0, 6))
         setNewReleases(songsData.slice(6, 12))
         setFeaturedSong(songsData[0] || null)
@@ -61,9 +98,17 @@ const Home = () => {
           artists: artistsData.length,
           users: artistsData.reduce((acc, a) => acc + (a.followers_count || 0), 0)
         })
+
+        // Only show error if ALL fetches failed
+        if (errors.length === 3) {
+          setError('All API requests failed. Check console for details.\n' + errors.join('\n'))
+        } else if (errors.length > 0) {
+          // Some succeeded, show partial data
+          console.warn('Partial load - some endpoints failed:', errors)
+        }
       } catch (err) {
-        console.error('Failed to fetch data:', err)
-        setError(err.response?.data?.detail || err.message || 'Unable to load content. Please try again.')
+        console.error('Unexpected error in fetchData:', err)
+        setError(err.message || 'Unexpected error. Check console.')
       } finally {
         setLoading(false)
       }
@@ -89,7 +134,11 @@ const Home = () => {
       <div className="flex flex-col items-center justify-center h-screen text-center px-4 gap-4">
         <Headphones className="w-16 h-16 text-gray-600" />
         <h2 className="text-2xl font-bold text-gray-300">Something went wrong</h2>
-        <p className="text-gray-500 max-w-md">{error}</p>
+        <p className="text-gray-500 max-w-md whitespace-pre-line">{error}</p>
+        <div className="text-xs text-gray-600 text-left max-w-md bg-gray-900 p-4 rounded-lg">
+          <p className="font-bold mb-2">Debug Info:</p>
+          <pre className="whitespace-pre-wrap">{debugInfo}</pre>
+        </div>
         <button onClick={() => window.location.reload()} className="px-6 py-3 bg-primary hover:bg-primary/80 rounded-xl font-medium transition-all">
           Try Again
         </button>
@@ -100,7 +149,17 @@ const Home = () => {
   return (
     <div ref={containerRef} className="space-y-0 pb-10">
       
-      {/* TOP BAR - Live Now / Quick Stats */}
+      {/* Debug banner - remove after fixing */}
+      {debugInfo && (
+        <div className="px-4 md:px-8 pt-2">
+          <div className="bg-yellow-900/30 border border-yellow-600/30 rounded-lg p-2 text-xs text-yellow-400 font-mono">
+            <p className="font-bold">Debug:</p>
+            <pre className="whitespace-pre-wrap">{debugInfo}</pre>
+          </div>
+        </div>
+      )}
+
+      {/* TOP BAR */}
       <div className="px-4 md:px-8 pt-4 pb-2">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
@@ -117,7 +176,7 @@ const Home = () => {
         </div>
       </div>
 
-      {/* HERO SECTION - Compact */}
+      {/* HERO SECTION */}
       <motion.section 
         style={{ y: heroY, opacity: heroOpacity }}
         className="relative mx-4 rounded-3xl overflow-hidden"
