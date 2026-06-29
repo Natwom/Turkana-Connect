@@ -8,7 +8,13 @@ router = APIRouter(prefix="/categories", tags=["Categories"])
 
 @router.get("/", response_model=List[schemas.CategoryResponse])
 def list_categories(db: Session = Depends(get_db)):
-    return db.query(models.Category).filter(models.Category.is_active == True).all()
+    try:
+        return db.query(models.Category).filter(models.Category.is_active == True).all()
+    except Exception as e:
+        import traceback
+        print(f"ERROR in list_categories: {e}")
+        print(traceback.format_exc())
+        raise HTTPException(status_code=500, detail=f"Server error: {str(e)}")
 
 @router.post("/", response_model=schemas.CategoryResponse, status_code=201)
 def create_category(

@@ -1,5 +1,3 @@
-# backend/app/schemas.py
-
 from pydantic import BaseModel, EmailStr, ConfigDict
 from typing import Optional, List
 from datetime import datetime
@@ -13,11 +11,9 @@ class UserBase(BaseModel):
     full_name: Optional[str] = None
 
 class UserCreate(UserBase):
-    model_config = ConfigDict(from_attributes=True)
     password: str
 
 class UserResponse(UserBase):
-    model_config = ConfigDict(from_attributes=True)
     id: int
     avatar_url: Optional[str] = None
     bio: Optional[str] = None
@@ -27,18 +23,15 @@ class UserResponse(UserBase):
     created_at: Optional[datetime] = None
 
 class UserLogin(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
     email: EmailStr
     password: str
 
 class Token(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
     access_token: str
     refresh_token: str
     token_type: str = "bearer"
 
 class TokenPayload(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
     sub: Optional[int] = None
     refresh_token: Optional[str] = None
 
@@ -56,9 +49,8 @@ class ArtistCreate(ArtistBase):
     pass
 
 class ArtistResponse(ArtistBase):
-    model_config = ConfigDict(from_attributes=True)
     id: int
-    user_id: Optional[int] = None  # ← Made optional
+    user_id: Optional[int] = None
     image_url: Optional[str] = None
     is_verified: bool = False
     is_approved: bool = False
@@ -79,7 +71,6 @@ class CategoryCreate(CategoryBase):
     pass
 
 class CategoryResponse(CategoryBase):
-    model_config = ConfigDict(from_attributes=True)
     id: int
     image_url: Optional[str] = None
     is_active: bool = True
@@ -97,7 +88,6 @@ class AlbumCreate(AlbumBase):
     pass
 
 class AlbumResponse(AlbumBase):
-    model_config = ConfigDict(from_attributes=True)
     id: int
     artist_id: Optional[int] = None
     cover_url: Optional[str] = None
@@ -113,17 +103,15 @@ class SongBase(BaseModel):
     is_explicit: bool = False
 
 class SongCreate(SongBase):
-    model_config = ConfigDict(from_attributes=True)
     album_id: Optional[int] = None
     category_id: Optional[int] = None
 
 class SongResponse(SongBase):
-    model_config = ConfigDict(from_attributes=True)
     id: int
     artist_id: Optional[int] = None
     album_id: Optional[int] = None
     category_id: Optional[int] = None
-    audio_url: Optional[str] = None  # ← Keep optional to handle bad data
+    audio_url: Optional[str] = None
     cover_url: Optional[str] = None
     is_approved: bool = False
     play_count: int = 0
@@ -133,20 +121,17 @@ class SongResponse(SongBase):
 # ============ DETAIL SCHEMAS (with relationships) ============
 
 class ArtistDetail(ArtistResponse):
-    model_config = ConfigDict(from_attributes=True)
     songs: List['SongResponse'] = []
     albums: List['AlbumResponse'] = []
 
 class AlbumDetail(AlbumResponse):
-    model_config = ConfigDict(from_attributes=True)
-    artist: Optional[ArtistResponse] = None
+    artist: Optional['ArtistResponse'] = None
     songs: List['SongResponse'] = []
 
 class SongDetail(SongResponse):
-    model_config = ConfigDict(from_attributes=True)
-    artist: Optional[ArtistResponse] = None
-    album: Optional[AlbumResponse] = None
-    category: Optional[CategoryResponse] = None
+    artist: Optional['ArtistResponse'] = None
+    album: Optional['AlbumResponse'] = None
+    category: Optional['CategoryResponse'] = None
 
 # ============ PLAYLIST SCHEMAS ============
 
@@ -159,15 +144,13 @@ class PlaylistCreate(PlaylistBase):
     pass
 
 class PlaylistResponse(PlaylistBase):
-    model_config = ConfigDict(from_attributes=True)
     id: int
     user_id: int
     cover_url: Optional[str] = None
     created_at: Optional[datetime] = None
 
 class PlaylistDetail(PlaylistResponse):
-    model_config = ConfigDict(from_attributes=True)
-    songs: List[SongResponse] = []
+    songs: List['SongResponse'] = []
 
 # ============ LIKE, FOLLOW, COMMENT SCHEMAS ============
 
@@ -193,12 +176,11 @@ class CommentCreate(CommentBase):
     pass
 
 class CommentResponse(CommentBase):
-    model_config = ConfigDict(from_attributes=True)
     id: int
     user_id: int
     song_id: int
     created_at: Optional[datetime] = None
-    user: Optional[UserResponse] = None
+    user: Optional['UserResponse'] = None
 
 # ============ PLAY HISTORY ============
 
@@ -208,7 +190,7 @@ class PlayHistoryResponse(BaseModel):
     song_id: int
     played_at: Optional[datetime] = None
     duration_played: int = 0
-    song: Optional[SongResponse] = None
+    song: Optional['SongResponse'] = None
 
 # ============ NOTIFICATION ============
 
@@ -256,15 +238,6 @@ class AdminLogResponse(BaseModel):
     entity_id: Optional[int] = None
     details: Optional[str] = None
     created_at: Optional[datetime] = None
-
-# ============ SEARCH ============
-
-class SearchResult(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
-    songs: List[SongResponse] = []
-    artists: List[ArtistResponse] = []
-    albums: List[AlbumResponse] = []
-    playlists: List[PlaylistResponse] = []
 
 # ============ USER SETTINGS SCHEMAS ============
 
@@ -330,6 +303,15 @@ class UserSettingsUpdate(BaseModel):
     two_factor: Optional[bool] = None
     login_alerts: Optional[bool] = None
     language: Optional[str] = None
+
+# ============ SEARCH ============
+
+class SearchResult(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    songs: List['SongResponse'] = []
+    artists: List['ArtistResponse'] = []
+    albums: List['AlbumResponse'] = []
+    playlists: List['PlaylistResponse'] = []
 
 # Update forward references
 ArtistDetail.model_rebuild()

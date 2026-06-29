@@ -9,7 +9,13 @@ router = APIRouter(prefix="/artists", tags=["Artists"])
 
 @router.get("/", response_model=List[schemas.ArtistResponse])
 def list_artists(skip: int = 0, limit: int = 20, db: Session = Depends(get_db)):
-    return db.query(models.Artist).filter(models.Artist.is_approved == True).offset(skip).limit(limit).all()
+    try:
+        return db.query(models.Artist).filter(models.Artist.is_approved == True).offset(skip).limit(limit).all()
+    except Exception as e:
+        import traceback
+        print(f"ERROR in list_artists: {e}")
+        print(traceback.format_exc())
+        raise HTTPException(status_code=500, detail=f"Server error: {str(e)}")
 
 @router.post("/", response_model=schemas.ArtistResponse, status_code=201)
 async def create_artist(
