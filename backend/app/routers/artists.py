@@ -26,29 +26,59 @@ async def create_artist(
     current_user: models.User = Depends(auth.get_current_active_user),
     db: Session = Depends(get_db)
 ):
-    if current_user.role not in ["artist", "admin"]:
-        current_user.role = "artist"
+    print(f"DEBUG: create_artist called by user {current_user.id} ({current_user.email}), role={current_user.role}")
     
+    # Check if artist profile already exists
     existing = db.query(models.Artist).filter(models.Artist.user_id == current_user.id).first()
     if existing:
+        print(f"DEBUG: Artist profile already exists for user {current_user.id}")
         raise HTTPException(400, "Artist profile already exists")
     
+    # Update user role to artist
+    if current_user.role not in ["artist", "admin"]:
+        print(f"DEBUG: Updating user {current_user.id} role from {current_user.role} to artist")
+        current_user.role = "artist"
+        db.add(current_user)
+        db.commit()
+        db.refresh(current_user)
+        print(f"DEBUG: User role updated to {current_user.role}")
+    
+    # Handle image upload
     image_url = None
     if image:
-        image_url = await save_upload_file(image, "images")
+        try:
+            print(f"DEBUG: Uploading image {image.filename}, content_type={image.content_type}")
+            image_url = await save_upload_file(image, "images")
+            print(f"DEBUG: Image uploaded to {image_url}")
+        except HTTPException:
+            raise
+        except Exception as e:
+            print(f"DEBUG: Image upload failed: {e}")
+            import traceback
+            print(traceback.format_exc())
+            raise HTTPException(500, f"Image upload failed: {str(e)}")
     
-    db_artist = models.Artist(
-        user_id=current_user.id,
-        stage_name=stage_name,
-        bio=bio,
-        genre=genre,
-        image_url=image_url,
-        is_approved=False
-    )
-    db.add(db_artist)
-    db.commit()
-    db.refresh(db_artist)
-    return db_artist
+    # Create artist
+    try:
+        db_artist = models.Artist(
+            user_id=current_user.id,
+            stage_name=stage_name,
+            bio=bio,
+            genre=genre,
+            image_url=image_url,
+            is_approved=False
+        )
+        db.add(db_artist)
+        db.commit()
+        db.refresh(db_artist)
+        print(f"DEBUG: Artist created successfully: {db_artist.id}")
+        return db_artist
+    except Exception as e:
+        print(f"DEBUG: Failed to create artist: {e}")
+        import traceback
+        print(traceback.format_exc())
+        db.rollback()
+        raise HTTPException(500, f"Failed to create artist: {str(e)}")
 
 @router.get("/{artist_id}", response_model=schemas.ArtistDetail)
 def get_artist(artist_id: int, db: Session = Depends(get_db)):

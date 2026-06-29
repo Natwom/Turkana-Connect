@@ -96,6 +96,11 @@ const BecomeArtist = () => {
       return
     }
 
+    // DEBUG: Check token
+    const token = localStorage.getItem('token')
+    console.log('DEBUG: Token exists:', !!token)
+    console.log('DEBUG: Token prefix:', token ? token.substring(0, 20) + '...' : 'none')
+
     setLoading(true)
     setError(null)
 
@@ -104,17 +109,36 @@ const BecomeArtist = () => {
       data.append('stage_name', formData.stage_name.trim())
       if (formData.bio) data.append('bio', formData.bio)
       if (formData.genre) data.append('genre', formData.genre)
-      if (image) data.append('image', image, image.name)
+      if (image) {
+        data.append('image', image, image.name)
+        console.log('DEBUG: Image appended:', image.name, image.type, image.size)
+      }
 
-      const res = await api.post('/api/v1/artists', data)
+      console.log('DEBUG: Sending request to /api/v1/artists')
+      console.log('DEBUG: FormData entries:', [...data.entries()].map(([k,v]) => `${k}: ${v instanceof File ? v.name : v}`))
+
+      const res = await api.post('/api/v1/artists', data, {
+        headers: {
+          'Content-Type': 'multipart/form-data'
+        }
+      })
+      console.log('DEBUG: Success response:', res.data)
       setSuccess(true)
       setTimeout(() => navigate('/profile'), 3000)
     } catch (err) {
-      setError(
-        err.response?.data?.detail || 
+      console.error('DEBUG: Full error:', err)
+      console.error('DEBUG: Response status:', err.response?.status)
+      console.error('DEBUG: Response data:', err.response?.data)
+      console.error('DEBUG: Response headers:', err.response?.headers)
+      
+      const errorMsg = err.response?.data?.detail || 
         err.response?.data?.message || 
-        'Failed to create artist profile. Please try again.'
-      )
+        (err.response?.status === 401 ? 'Please log in again' :
+         err.response?.status === 403 ? 'Not authorized' :
+         err.response?.status === 500 ? 'Server error. Please try again.' :
+         'Failed to create artist profile. Please try again.')
+      
+      setError(errorMsg)
     } finally {
       setLoading(false)
     }
