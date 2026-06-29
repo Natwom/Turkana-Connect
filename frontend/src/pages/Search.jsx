@@ -15,7 +15,7 @@ import {
   MoreHorizontal,
   Filter
 } from 'lucide-react'
-import axios from 'axios'
+import { searchApi } from '../api'
 import SongCard from '../components/SongCard'
 import { usePlayer } from '../context/PlayerContext'
 
@@ -31,7 +31,6 @@ const Search = () => {
   const { playSong } = usePlayer()
   const inputRef = useRef(null)
 
-  // Load recent searches from localStorage
   useEffect(() => {
     const saved = localStorage.getItem('recentSearches')
     if (saved) setRecentSearches(JSON.parse(saved))
@@ -56,11 +55,12 @@ const Search = () => {
     if (!q.trim()) return
     setLoading(true)
     try {
-      const res = await axios.get(`/api/v1/search?q=${encodeURIComponent(q)}`)
+      const res = await searchApi.search(q)
       setResults(res.data)
       saveRecentSearch(q)
     } catch (err) {
       console.error('Search failed:', err)
+      setResults({ songs: [], artists: [], albums: [], playlists: [] })
     } finally {
       setLoading(false)
     }
@@ -100,12 +100,10 @@ const Search = () => {
 
   const totalResults = results.songs.length + results.artists.length + results.albums.length + results.playlists.length
 
-  // Trending searches (mock data - replace with API call)
   const trendingSearches = ['Afrobeats', 'Turkana Hits', 'New Releases', 'Top Charts', 'Hip Hop', 'Gospel']
 
   return (
     <div className="min-h-screen pb-20">
-      {/* Hero Search Section */}
       <motion.div 
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -134,7 +132,6 @@ const Search = () => {
             }
           </motion.p>
 
-          {/* Search Bar */}
           <form onSubmit={handleSubmit} className="max-w-2xl relative">
             <motion.div 
               className={`relative group ${isSearchFocused ? 'scale-[1.02]' : ''} transition-transform duration-300`}
@@ -180,7 +177,6 @@ const Search = () => {
               </div>
             </motion.div>
 
-            {/* Recent Searches Dropdown */}
             <AnimatePresence>
               {isSearchFocused && !query && recentSearches.length > 0 && (
                 <motion.div
@@ -224,7 +220,6 @@ const Search = () => {
             </AnimatePresence>
           </form>
 
-          {/* Trending Searches */}
           {!query && (
             <motion.div 
               initial={{ opacity: 0, y: 20 }}
@@ -257,9 +252,7 @@ const Search = () => {
         </div>
       </motion.div>
 
-      {/* Content */}
       <div className="px-4">
-        {/* Tabs */}
         <AnimatePresence>
           {hasResults && (
             <motion.div 
@@ -314,7 +307,6 @@ const Search = () => {
           )}
         </AnimatePresence>
 
-        {/* Loading State */}
         {loading && (
           <div className="flex flex-col items-center justify-center h-64 gap-4">
             <motion.div
@@ -326,7 +318,6 @@ const Search = () => {
           </div>
         )}
 
-        {/* Empty State */}
         {!loading && !hasResults && query && (
           <motion.div 
             initial={{ opacity: 0, scale: 0.9 }}
@@ -361,10 +352,8 @@ const Search = () => {
           </motion.div>
         )}
 
-        {/* Results */}
         {!loading && hasResults && (
           <div className="space-y-10">
-            {/* Songs Section */}
             <AnimatePresence>
               {(activeTab === 'all' || activeTab === 'songs') && results.songs.length > 0 && (
                 <motion.section
@@ -405,7 +394,6 @@ const Search = () => {
               )}
             </AnimatePresence>
 
-            {/* Artists Section */}
             <AnimatePresence>
               {(activeTab === 'all' || activeTab === 'artists') && results.artists.length > 0 && (
                 <motion.section
@@ -467,7 +455,6 @@ const Search = () => {
               )}
             </AnimatePresence>
 
-            {/* Albums Section */}
             <AnimatePresence>
               {(activeTab === 'all' || activeTab === 'albums') && results.albums.length > 0 && (
                 <motion.section
@@ -531,7 +518,6 @@ const Search = () => {
               )}
             </AnimatePresence>
 
-            {/* Playlists Section */}
             <AnimatePresence>
               {(activeTab === 'all' || activeTab === 'playlists') && results.playlists?.length > 0 && (
                 <motion.section

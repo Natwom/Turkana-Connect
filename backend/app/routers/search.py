@@ -14,17 +14,24 @@ def search(
     search_term = f"%{q}%"
     
     songs = db.query(models.Song).filter(
-        models.Song.is_approved == True,
-        or_(models.Song.title.ilike(search_term), models.Song.lyrics.ilike(search_term))
+        or_(
+            models.Song.title.ilike(search_term),
+            models.Song.lyrics.ilike(search_term)
+        )
     ).limit(10).all()
     
     artists = db.query(models.Artist).filter(
-        models.Artist.is_approved == True,
-        or_(models.Artist.stage_name.ilike(search_term), models.Artist.bio.ilike(search_term))
+        or_(
+            models.Artist.stage_name.ilike(search_term),
+            models.Artist.bio.ilike(search_term)
+        )
     ).limit(10).all()
     
     albums = db.query(models.Album).filter(
-        models.Album.title.ilike(search_term)
+        or_(
+            models.Album.title.ilike(search_term),
+            models.Album.description.ilike(search_term)
+        )
     ).limit(10).all()
     
     playlists = db.query(models.Playlist).filter(
