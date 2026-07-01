@@ -102,7 +102,7 @@ const Register = () => {
               <Sparkles className="w-5 h-5 text-yellow-400" />
             </motion.div>
           </motion.div>
-          <h1 className="text-4xl font-bold text-white mb-3 tracking-tight">Join Turkana Music</h1>
+          <h1 className="text-4xl font-bold text-white mb-3 tracking-tight">Join Apiaro Music</h1>
           <p className="text-gray-400 text-lg">Create your account and start your <span className="text-fuchsia-400 font-medium">musical journey</span></p>
         </motion.div>
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3, duration: 0.5 }} className="relative">

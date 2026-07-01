@@ -31,7 +31,7 @@ const HeroBanner = () => {
           transition={{ delay: 0.3 }}
           className="text-4xl md:text-6xl font-bold mb-4 leading-tight"
         >
-          Discover the Sound of <span className="gradient-text">Turkana</span>
+          Discover the Sound of <span className="gradient-text">Apiaro</span>
         </motion.h1>
         
         <motion.p 
@@ -40,7 +40,7 @@ const HeroBanner = () => {
           transition={{ delay: 0.4 }}
           className="text-gray-400 text-lg mb-8 max-w-lg"
         >
-          Stream the best Kenyan and Turkana music. Support local artists and explore authentic African rhythms.
+          Stream the best Kenyan and Apiaro music. Support local artists and explore authentic African rhythms.
         </motion.p>
         
         <motion.div 

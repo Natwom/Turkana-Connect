@@ -23,7 +23,7 @@ const Navbar = () => {
           <div className="w-8 h-8 bg-gradient-to-br from-primary to-secondary rounded-lg flex items-center justify-center">
             <Music2 className="w-5 h-5 text-white" />
           </div>
-          <span className="font-bold text-lg hidden sm:block">Turkana</span>
+          <span className="font-bold text-lg hidden sm:block">Apiaro</span>
         </Link>
 
         {/* Search bar */}

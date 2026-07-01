@@ -93,7 +93,7 @@ const Login = () => {
           </motion.div>
           
           <h1 className="text-4xl font-bold text-white mb-3 tracking-tight">Admin Portal</h1>
-          <p className="text-gray-400 text-lg">Turkana Music Hub Management</p>
+          <p className="text-gray-400 text-lg">Apiaro Music Management</p>
         </motion.div>
 
         <motion.div
@@ -132,7 +132,7 @@ const Login = () => {
                   onFocus={() => setFocusedField('email')}
                   onBlur={() => setFocusedField(null)}
                   className="w-full bg-[#1a1a2e] border border-white/[0.08] rounded-xl py-3.5 pl-12 pr-4 text-white placeholder-gray-500 focus:outline-none focus:border-fuchsia-500/50 focus:ring-2 focus:ring-fuchsia-500/20 transition-all duration-300 hover:border-white/[0.15]" 
-                  placeholder="boss@turkana.music" 
+                  placeholder="boss@apiaro.music" 
                   required 
                 />
                 <motion.div

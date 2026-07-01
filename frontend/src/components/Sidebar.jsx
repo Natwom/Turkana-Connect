@@ -44,8 +44,8 @@ const Sidebar = () => {
             <Music2 className="w-6 h-6 text-white" />
           </div>
           <div>
-            <h1 className="font-bold text-lg leading-tight">Turkana</h1>
-            <p className="text-xs text-gray-400">Music Hub</p>
+            <h1 className="font-bold text-lg leading-tight">Apiaro</h1>
+            <p className="text-xs text-gray-400">Music</p>
           </div>
         </div>
 
