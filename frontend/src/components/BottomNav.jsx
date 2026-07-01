@@ -2,10 +2,6 @@ import { NavLink, useLocation } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { useAuth } from '../context/AuthContext'
 
-// ═══════════════════════════════════════════════════════════════
-// UNIQUE CUSTOM SVG ICONS — Not from any icon library
-// ═══════════════════════════════════════════════════════════════
-
 const HomeIcon = ({ isActive }) => (
   <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
     <path d="M3 9.5L12 3l9 6.5" />
@@ -55,32 +51,10 @@ const UploadIcon = ({ isActive }) => (
   </svg>
 )
 
-const MicIcon = ({ isActive }) => (
-  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M12 2a3 3 0 00-3 3v7a3 3 0 006 0V5a3 3 0 00-3-3z" />
-    <path d="M19 10v2a7 7 0 01-14 0v-2" />
-    <line x1="12" y1="19" x2="12" y2="22" />
-    <line x1="8" y1="22" x2="16" y2="22" />
-    {isActive && <circle cx="12" cy="9" r="1.5" fill="currentColor" opacity="0.5" />}
-  </svg>
-)
-
-const SettingsIcon = ({ isActive }) => (
-  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <circle cx="12" cy="12" r="3" fill={isActive ? "currentColor" : "none"} opacity={isActive ? 0.3 : 0} />
-    <path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 010-2.83 2 2 0 012.83 0l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 0 2 2 0 010 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z" />
-  </svg>
-)
-
-// ═══════════════════════════════════════════════════════════════
-// BOTTOM NAV COMPONENT
-// ═══════════════════════════════════════════════════════════════
-
 const BottomNav = () => {
   const { user } = useAuth()
   const location = useLocation()
 
-  // Base nav items for all users (max 5 for mobile)
   const baseNavItems = [
     { to: '/', icon: HomeIcon, label: 'Home' },
     { to: '/search', icon: SearchIcon, label: 'Search' },
@@ -89,7 +63,6 @@ const BottomNav = () => {
     { to: '/profile', icon: ProfileIcon, label: 'Profile' },
   ]
 
-  // Artist-only items (replace "Liked" with "Upload" for artists)
   const artistNavItems = (user?.role === 'artist' || user?.role === 'admin')
     ? [
         { to: '/', icon: HomeIcon, label: 'Home' },
@@ -100,8 +73,6 @@ const BottomNav = () => {
       ]
     : baseNavItems
 
-  // Non-artist: add "Become Artist" in a secondary menu or keep as-is
-  // For bottom nav, we keep it clean with 5 items max
   const navItems = artistNavItems
 
   return (
@@ -151,7 +122,6 @@ const BottomNav = () => {
         })}
       </div>
       
-      {/* Active indicator line */}
       <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-primary/30 to-transparent" />
     </motion.nav>
   )

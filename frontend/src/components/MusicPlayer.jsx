@@ -102,7 +102,7 @@ const MusicPlayer = () => {
     <motion.div 
       initial={{ y: 100 }}
       animate={{ y: 0 }}
-      className="fixed bottom-0 left-0 right-0 lg:left-64 bg-card/95 backdrop-blur-2xl border-t border-white/10 z-50 px-6 py-4"
+      className="fixed bottom-[72px] left-0 right-0 bg-[#0f0f1a]/95 backdrop-blur-xl border-t border-white/10 z-50 px-4 py-3 md:px-6 md:py-4"
     >
       <audio
         ref={audioRef}
