@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Music2, Mail, Lock, Eye, EyeOff, ArrowRight, Sparkles } from 'lucide-react'
+import { Music2, Mail, Lock, Eye, EyeOff, ArrowRight, Sparkles, CheckCircle } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 
 const Login = () => {
@@ -9,6 +9,7 @@ const Login = () => {
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState('')
+  const [success, setSuccess] = useState('')
   const [loading, setLoading] = useState(false)
   const [focusedField, setFocusedField] = useState(null)
   const navigate = useNavigate()
@@ -17,10 +18,16 @@ const Login = () => {
   const handleSubmit = async (e) => {
     e.preventDefault()
     setError('')
+    setSuccess('')
     setLoading(true)
     try {
       await login(email, password)
-      navigate('/')
+      setSuccess('Welcome back! Login successful.')
+      
+      // Wait 1.5 seconds so user sees the success message before navigating
+      setTimeout(() => {
+        navigate('/')
+      }, 1500)
     } catch (err) {
       setError(err.response?.data?.detail || 'Invalid email or password. Please try again.')
     } finally {
@@ -134,6 +141,24 @@ const Login = () => {
             onSubmit={handleSubmit} 
             className="relative bg-[#12121a]/80 backdrop-blur-xl border border-white/[0.08] rounded-3xl p-8 shadow-2xl"
           >
+            {/* Success Message */}
+            <AnimatePresence mode="wait">
+              {success && (
+                <motion.div
+                  initial={{ opacity: 0, height: 0, marginBottom: 0 }}
+                  animate={{ opacity: 1, height: 'auto', marginBottom: 24 }}
+                  exit={{ opacity: 0, height: 0, marginBottom: 0 }}
+                  className="overflow-hidden"
+                >
+                  <div className="p-4 bg-emerald-500/10 border border-emerald-500/20 rounded-xl text-emerald-400 text-sm flex items-center gap-3">
+                    <CheckCircle className="w-5 h-5 shrink-0" />
+                    {success}
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+
+            {/* Error Message */}
             <AnimatePresence mode="wait">
               {error && (
                 <motion.div

@@ -172,7 +172,7 @@ const Home = () => {
               <span className="px-2 py-0.5 bg-primary/20 text-primary rounded text-xs font-bold uppercase">Featured</span>
               <span className="flex items-center gap-1 text-yellow-400 text-xs"><Flame className="w-3 h-3" /> Trending</span>
             </div>
-            <h1 className="text-2xl md:text-4xl font-bold mb-1 truncate">{featuredSong?.title || 'Discover Turkana Music'}</h1>
+            <h1 className="text-2xl md:text-4xl font-bold mb-1 truncate">{featuredSong?.title || 'Discover Apiaro Music'}</h1>
             <p className="text-gray-400 text-sm mb-3">{featuredSong?.artist?.stage_name || 'Various Artists'}</p>
             <div className="flex items-center gap-3">
               <button onClick={() => handlePlaySong(featuredSong)} className="flex items-center gap-2 px-5 py-2.5 bg-primary hover:bg-primary/90 rounded-xl font-semibold text-sm transition-all hover:scale-105">
@@ -415,7 +415,7 @@ const Home = () => {
               </div>
               <h2 className="text-2xl md:text-3xl font-bold mb-2">Share Your Sound With The World</h2>
               <p className="text-gray-400 text-sm max-w-md">
-                Join {stats.artists}+ artists on Turkana Music Hub. Upload, share, and grow your audience.
+                Join {stats.artists}+ artists on Apiaro Music. Upload, share, and grow your audience.
               </p>
             </div>
             <div className="flex items-center gap-3">
@@ -457,7 +457,7 @@ const Home = () => {
       <div className="px-4 md:px-8 pb-4">
         <div className="flex flex-col md:flex-row items-center justify-between gap-4 py-4 border-t border-white/5 text-xs text-gray-600">
           <div className="flex items-center gap-4">
-            <span>© 2026 Turkana Music Hub</span>
+            <span>© 2026 Apiaro Music</span>
             <button onClick={() => navigate('/categories')} className="hover:text-gray-400 transition-colors">Categories</button>
             <button onClick={() => navigate('/search')} className="hover:text-gray-400 transition-colors">Search</button>
           </div>
