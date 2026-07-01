@@ -16,11 +16,21 @@ const getImageUrl = (path) => {
   return `${baseUrl}${path}`
 }
 
+// Static data for Quick Access - defined OUTSIDE component to prevent re-renders
+const QUICK_ACCESS_ITEMS = [
+  { icon: Radio, label: 'Live Radio', color: 'text-red-400', bg: 'bg-red-500/10', desc: 'Streaming now' },
+  { icon: TrendingUp, label: 'Top 50', color: 'text-primary', bg: 'bg-primary/10', desc: 'This week' },
+  { icon: Award, label: 'New Artists', color: 'text-yellow-400', bg: 'bg-yellow-500/10', desc: 'Fresh talent' },
+  { icon: BarChart3, label: 'Charts', color: 'text-green-400', bg: 'bg-green-500/10', desc: 'Rankings' },
+]
+
 const Home = () => {
   const navigate = useNavigate()
   const player = usePlayer() || {}
-  const containerRef = useRef(null)
-  const { scrollYProgress } = useScroll({ target: containerRef })
+  
+  // FIX: Separate ref for hero section only, not the whole page
+  const heroRef = useRef(null)
+  const { scrollYProgress } = useScroll({ target: heroRef })
   const heroY = useTransform(scrollYProgress, [0, 0.3], [0, -50])
   const heroOpacity = useTransform(scrollYProgress, [0, 0.2], [1, 0])
 
@@ -120,7 +130,7 @@ const Home = () => {
   }
 
   return (
-    <div ref={containerRef} className="space-y-0 pb-10">
+    <div className="space-y-0 pb-10">
       
       {/* TOP BAR - Live Now / Quick Stats */}
       <div className="px-4 md:px-8 pt-4 pb-2">
@@ -140,7 +150,9 @@ const Home = () => {
       </div>
 
       {/* HERO SECTION - Compact */}
+      {/* FIX: Attach ref to hero section only, not the whole page */}
       <motion.section 
+        ref={heroRef}
         style={{ y: heroY, opacity: heroOpacity }}
         className="relative mx-4 rounded-3xl overflow-hidden"
       >
@@ -193,19 +205,18 @@ const Home = () => {
       </motion.section>
 
       {/* QUICK ACCESS ROW */}
+      {/* FIX: Use regular div instead of motion.section, and static key to prevent re-animation */}
       <section className="px-4 md:px-8 py-4">
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          {[
-            { icon: Radio, label: 'Live Radio', color: 'text-red-400', bg: 'bg-red-500/10', desc: 'Streaming now' },
-            { icon: TrendingUp, label: 'Top 50', color: 'text-primary', bg: 'bg-primary/10', desc: 'This week' },
-            { icon: Award, label: 'New Artists', color: 'text-yellow-400', bg: 'bg-yellow-500/10', desc: 'Fresh talent' },
-            { icon: BarChart3, label: 'Charts', color: 'text-green-400', bg: 'bg-green-500/10', desc: 'Rankings' },
-          ].map((item, i) => (
+          {QUICK_ACCESS_ITEMS.map((item, i) => (
             <motion.button
-              key={item.label}
+              key={`quick-access-${item.label}`}
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: i * 0.05 }}
+              transition={{ delay: i * 0.05, duration: 0.4 }}
+              // FIX: Remove whileHover/whileTap if they cause issues, or keep them simple
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
               onClick={() => navigate('/search')}
               className="flex items-center gap-3 p-3 rounded-2xl bg-surface/50 border border-white/5 hover:border-primary/30 hover:bg-surface transition-all text-left"
             >
