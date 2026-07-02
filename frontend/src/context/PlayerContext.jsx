@@ -79,7 +79,7 @@ export const PlayerProvider = ({ children }) => {
 
   return (
     <PlayerContext.Provider value={{
-      currentSong, isPlaying, queue, isShuffle, isRepeat,
+      currentSong, isPlaying, queue, currentIndex, isShuffle, isRepeat,
       playSong, playNext, playPrevious, togglePlay, addToQueue,
       setIsShuffle, setIsRepeat
     }}>

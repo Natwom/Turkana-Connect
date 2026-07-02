@@ -5,6 +5,8 @@ import {
   Repeat, Volume2, VolumeX, ListMusic, Heart 
 } from 'lucide-react'
 import { usePlayer } from '../context/PlayerContext'
+import { useAuth } from '../context/AuthContext'
+import likesApi from '../api/likes'
 
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:8000'
 
@@ -22,6 +24,7 @@ const getImageUrl = (path) => {
 
 const MusicPlayer = () => {
   const player = usePlayer() || {}
+  const { isAuthenticated } = useAuth()
   const { 
     currentSong, isPlaying, togglePlay, playNext, 
     playPrevious, isShuffle, setIsShuffle, isRepeat, setIsRepeat 
@@ -32,7 +35,28 @@ const MusicPlayer = () => {
   const [volume, setVolume] = useState(0.8)
   const [isMuted, setIsMuted] = useState(false)
   const [audioError, setAudioError] = useState(false)
+  const [isLiked, setIsLiked] = useState(false)
+  const [isLikeLoading, setIsLikeLoading] = useState(false)
   const audioRef = useRef(null)
+
+  // Check like status when current song changes
+  useEffect(() => {
+    if (!isAuthenticated || !currentSong?.id) {
+      setIsLiked(false)
+      return
+    }
+    
+    const checkLikeStatus = async () => {
+      try {
+        const res = await likesApi.checkLike(currentSong.id)
+        setIsLiked(res.data.liked)
+      } catch (err) {
+        setIsLiked(false)
+      }
+    }
+    
+    checkLikeStatus()
+  }, [currentSong?.id, isAuthenticated])
 
   useEffect(() => {
     if (currentSong && audioRef.current) {
@@ -89,6 +113,33 @@ const MusicPlayer = () => {
     setAudioError(true)
   }
 
+  const handleLikeToggle = async () => {
+    if (!isAuthenticated) {
+      window.location.href = '/login'
+      return
+    }
+    if (!currentSong?.id || isLikeLoading) return
+    
+    setIsLikeLoading(true)
+    try {
+      if (isLiked) {
+        await likesApi.unlikeSong(currentSong.id)
+        setIsLiked(false)
+      } else {
+        await likesApi.likeSong(currentSong.id)
+        setIsLiked(true)
+      }
+    } catch (err) {
+      console.error('Like toggle failed:', err)
+      try {
+        const res = await likesApi.checkLike(currentSong.id)
+        setIsLiked(res.data.liked)
+      } catch (_) {}
+    } finally {
+      setIsLikeLoading(false)
+    }
+  }
+
   const formatTime = (seconds) => {
     if (!seconds || isNaN(seconds)) return '0:00'
     const mins = Math.floor(seconds / 60)
@@ -129,8 +180,18 @@ const MusicPlayer = () => {
               <p className="text-xs text-red-400">Failed to load audio</p>
             )}
           </div>
-          <button className="p-2 hover:bg-white/5 rounded-lg transition-colors">
-            <Heart className="w-4 h-4 text-gray-400" />
+          <button 
+            onClick={handleLikeToggle}
+            disabled={isLikeLoading}
+            className="p-2 hover:bg-white/5 rounded-lg transition-colors disabled:opacity-50"
+          >
+            <Heart 
+              className={`w-4 h-4 transition-colors ${
+                isLiked 
+                  ? 'text-red-500 fill-red-500' 
+                  : 'text-gray-400 hover:text-red-400'
+              }`} 
+            />
           </button>
         </div>
 
