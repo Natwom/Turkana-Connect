@@ -3,6 +3,7 @@ from sqlalchemy.orm import Session
 from typing import List
 from app.database import get_db
 from app import models, schemas, auth
+from app.services.notification import NotificationService
 
 router = APIRouter(prefix="/comments", tags=["Comments"])
 
@@ -27,4 +28,8 @@ def create_comment(
     db.add(db_comment)
     db.commit()
     db.refresh(db_comment)
+    
+    # Notify artist about new comment
+    NotificationService.create_comment_notification(db, db_comment)
+    
     return db_comment

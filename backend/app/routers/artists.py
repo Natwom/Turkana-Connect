@@ -4,6 +4,7 @@ from typing import Optional, List
 from app.database import get_db
 from app import models, schemas, auth
 from app.dependencies import save_upload_file
+from app.services.notification import NotificationService
 
 router = APIRouter(prefix="/artists", tags=["Artists"])
 
@@ -72,6 +73,10 @@ async def create_artist(
         db.commit()
         db.refresh(db_artist)
         print(f"DEBUG: Artist created successfully: {db_artist.id}")
+        
+        # Notify admins about new artist application
+        NotificationService.create_artist_application_notification(db, current_user)
+        
         return db_artist
     except Exception as e:
         print(f"DEBUG: Failed to create artist: {e}")
@@ -108,6 +113,11 @@ def follow_artist(
     artist.followers_count += 1
     db.add(follow)
     db.commit()
+    db.refresh(follow)
+    
+    # Notify artist about new follower
+    NotificationService.create_follow_notification(db, follow)
+    
     return {"message": "Followed successfully"}
 
 @router.delete("/{artist_id}/follow")

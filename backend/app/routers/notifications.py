@@ -3,6 +3,7 @@ from sqlalchemy.orm import Session
 from typing import List
 from app.database import get_db
 from app import models, schemas, auth
+from app.services.notification import NotificationService
 
 router = APIRouter(prefix="/notifications", tags=["Notifications"])
 
@@ -29,3 +30,11 @@ def mark_read(
         notif.is_read = True
         db.commit()
     return {"message": "Marked as read"}
+
+@router.post("/read-all")
+def mark_all_read(
+    current_user: models.User = Depends(auth.get_current_active_user),
+    db: Session = Depends(get_db)
+):
+    count = NotificationService.mark_all_as_read(db, current_user.id)
+    return {"message": f"Marked {count} notifications as read"}

@@ -5,6 +5,7 @@ from datetime import timedelta
 from app.database import get_db
 from app import models, schemas, auth
 from app.config import settings
+from app.services.notification import NotificationService
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 
@@ -25,6 +26,10 @@ def register(user_data: schemas.UserCreate, db: Session = Depends(get_db)):
     db.add(db_user)
     db.commit()
     db.refresh(db_user)
+    
+    # Send welcome notification
+    NotificationService.create_welcome_notification(db, db_user.id)
+    
     return db_user
 
 @router.post("/login", response_model=schemas.Token)

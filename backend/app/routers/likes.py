@@ -4,6 +4,7 @@ from sqlalchemy import func
 from typing import List
 from app.database import get_db
 from app import models, auth
+from app.services.notification import NotificationService
 
 router = APIRouter(prefix="/likes", tags=["Likes"])
 
@@ -100,6 +101,10 @@ def like_song(
     db.add(like)
     db.commit()
     db.refresh(like)
+    
+    # Send notification to artist
+    NotificationService.create_like_notification(db, like)
+    
     return {"message": "Liked", "liked": True, "song_id": song_id}
 
 

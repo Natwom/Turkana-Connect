@@ -4,6 +4,7 @@ from sqlalchemy import func
 from typing import List, Optional
 from app.database import get_db
 from app import models, schemas, auth
+from app.services.notification import NotificationService
 
 router = APIRouter(prefix="/admin", tags=["Admin"])
 
@@ -49,6 +50,11 @@ def approve_artist(artist_id: int, current_user: models.User = Depends(auth.requ
     artist.is_approved = True
     db.commit()
     
+    # Notify artist
+    NotificationService.create_approval_notification(
+        db, artist, "artist profile", artist.stage_name
+    )
+    
     log = models.AdminLog(admin_id=current_user.id, action="approve_artist", entity_type="artist", entity_id=artist_id)
     db.add(log)
     db.commit()
@@ -83,12 +89,17 @@ def approve_song(song_id: int, current_user: models.User = Depends(auth.require_
     song.is_approved = True
     db.commit()
     
+    # Notify artist
+    if song.artist:
+        NotificationService.create_approval_notification(
+            db, song.artist, "song", song.title
+        )
+    
     log = models.AdminLog(admin_id=current_user.id, action="approve_song", entity_type="song", entity_id=song_id)
     db.add(log)
     db.commit()
     return {"message": "Song approved"}
 
-# ← NEW: Delete song endpoint
 @router.delete("/songs/{song_id}")
 def delete_song(
     song_id: int,

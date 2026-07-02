@@ -4,6 +4,7 @@ from typing import Optional, List
 from app.database import get_db
 from app import models, schemas, auth
 from app.dependencies import save_upload_file
+from app.services.notification import NotificationService
 
 router = APIRouter(prefix="/songs", tags=["Songs"])
 
@@ -63,6 +64,10 @@ async def create_song(
     db.add(db_song)
     db.commit()
     db.refresh(db_song)
+    
+    # Notify followers about new release
+    NotificationService.create_new_release_notification(db, artist, db_song)
+    
     return db_song
 
 @router.get("/{song_id}", response_model=schemas.SongDetail)
@@ -71,6 +76,7 @@ def get_song(song_id: int, db: Session = Depends(get_db)):
     if not song:
         raise HTTPException(404, "Song not found")
     return song
+
 @router.post("/{song_id}/play")
 def record_play(song_id: int, db: Session = Depends(get_db)):
     song = db.query(models.Song).filter(models.Song.id == song_id).first()
