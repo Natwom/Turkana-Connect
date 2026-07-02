@@ -5,7 +5,7 @@ import { usePlayer } from '../context/PlayerContext'
 import { useAuth } from '../context/AuthContext'
 import likesApi from '../api/likes'
 
-const SongCard = ({ song, index = 0, songsList = [] }) => {
+const SongCard = ({ song, index = 0 }) => {
   const { playSong, currentSong, isPlaying } = usePlayer()
   const { isAuthenticated } = useAuth()
   const isCurrentSong = currentSong?.id === song.id
@@ -28,12 +28,6 @@ const SongCard = ({ song, index = 0, songsList = [] }) => {
     
     checkLikeStatus()
   }, [song?.id, isAuthenticated])
-
-  const handleCardClick = () => {
-    // Pass the full songs list as queue so Next/Previous work
-    const queue = songsList.length > 0 ? songsList : [song]
-    playSong(song, queue)
-  }
 
   const handleLikeToggle = async (e) => {
     e.stopPropagation() // Don't play the song when clicking the heart
@@ -72,7 +66,7 @@ const SongCard = ({ song, index = 0, songsList = [] }) => {
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: index * 0.05 }}
       className="group relative glass-card p-4 hover-lift cursor-pointer"
-      onClick={handleCardClick}
+      onClick={() => playSong(song)}
     >
       <div className="relative aspect-square rounded-xl overflow-hidden mb-3">
         <img 
