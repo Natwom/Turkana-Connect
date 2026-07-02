@@ -1,11 +1,13 @@
 import { createContext, useContext, useState, useEffect } from 'react'
 import api from '../api/axios'
+import { useSettings } from './SettingsContext'
 
 const AuthContext = createContext(null)
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null)
   const [loading, setLoading] = useState(true)
+  const { loadSettings } = useSettings()
 
   useEffect(() => {
     const token = localStorage.getItem('token')
@@ -21,6 +23,8 @@ export const AuthProvider = ({ children }) => {
     try {
       const res = await api.get('/api/v1/auth/me')
       setUser(res.data)
+      // Load user settings after user is fetched
+      await loadSettings()
     } catch (err) {
       logout()
     } finally {

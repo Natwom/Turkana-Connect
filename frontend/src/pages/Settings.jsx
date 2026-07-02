@@ -1,9 +1,11 @@
 import { useState, useEffect } from 'react'
+import { Link } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useNavigate } from 'react-router-dom'
 import api from '../api/axios'
 import userApi from '../api/user'
 import { useAuth } from '../context/AuthContext'
+import { useSettings } from '../context/SettingsContext'
 import { 
   User, Bell, Lock, Palette, Globe, Volume2, 
   ChevronRight, Camera, Mail, Smartphone, 
@@ -14,6 +16,7 @@ import {
 const Settings = () => {
   const navigate = useNavigate()
   const { user, logout } = useAuth()
+  const { settings: contextSettings, loadSettings, updateSettings } = useSettings()
   
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -31,36 +34,30 @@ const Settings = () => {
 
   // Settings state (maps to UserSettings table)
   const [settings, setSettings] = useState({
-    // Notifications
     push_notifications: true,
     email_notifications: true,
     new_release_alerts: true,
     artist_updates: false,
     playlist_collabs: true,
     marketing_emails: false,
-    // Playback
     audio_quality: 'high',
     crossfade: true,
     crossfade_duration: 5,
     normalize_volume: true,
     autoplay: true,
     gapless_playback: false,
-    // Appearance
     theme: 'dark',
     compact_mode: false,
     show_lyrics: true,
     animations: true,
     font_size: 'medium',
-    // Privacy
     private_profile: false,
     activity_sharing: true,
     listening_history: true,
     show_followers: true,
     allow_messages: 'everyone',
-    // Security
     two_factor: false,
     login_alerts: true,
-    // Language
     language: 'en',
   })
 
@@ -87,61 +84,48 @@ const Settings = () => {
     { id: 'language', label: 'Language', icon: Globe, color: 'text-cyan-400' },
   ]
 
-  // Load user and settings from backend on mount
+  // Load settings from context on mount
   useEffect(() => {
     if (!user) return
+    
+    // Sync local state with context settings
+    setProfile({
+      full_name: user.full_name || '',
+      username: user.username || '',
+      email: user.email || '',
+      bio: user.bio || '',
+    })
 
-    const loadData = async () => {
-      setLoading(true)
-      try {
-        // Load profile from user object
-        setProfile({
-          full_name: user.full_name || '',
-          username: user.username || '',
-          email: user.email || '',
-          bio: user.bio || '',
-        })
-
-        // Load settings from backend
-        const settingsRes = await userApi.getSettings()
-        const s = settingsRes.data
-        setSettings({
-          push_notifications: s.push_notifications ?? true,
-          email_notifications: s.email_notifications ?? true,
-          new_release_alerts: s.new_release_alerts ?? true,
-          artist_updates: s.artist_updates ?? false,
-          playlist_collabs: s.playlist_collabs ?? true,
-          marketing_emails: s.marketing_emails ?? false,
-          audio_quality: s.audio_quality || 'high',
-          crossfade: s.crossfade ?? true,
-          crossfade_duration: s.crossfade_duration ?? 5,
-          normalize_volume: s.normalize_volume ?? true,
-          autoplay: s.autoplay ?? true,
-          gapless_playback: s.gapless_playback ?? false,
-          theme: s.theme || 'dark',
-          compact_mode: s.compact_mode ?? false,
-          show_lyrics: s.show_lyrics ?? true,
-          animations: s.animations ?? true,
-          font_size: s.font_size || 'medium',
-          private_profile: s.private_profile ?? false,
-          activity_sharing: s.activity_sharing ?? true,
-          listening_history: s.listening_history ?? true,
-          show_followers: s.show_followers ?? true,
-          allow_messages: s.allow_messages || 'everyone',
-          two_factor: s.two_factor ?? false,
-          login_alerts: s.login_alerts ?? true,
-          language: s.language || 'en',
-        })
-      } catch (err) {
-        console.error('Failed to load settings:', err)
-        setMessage({ type: 'error', text: 'Failed to load settings' })
-      } finally {
-        setLoading(false)
-      }
-    }
-
-    loadData()
-  }, [user])
+    setSettings({
+      push_notifications: contextSettings.push_notifications ?? true,
+      email_notifications: contextSettings.email_notifications ?? true,
+      new_release_alerts: contextSettings.new_release_alerts ?? true,
+      artist_updates: contextSettings.artist_updates ?? false,
+      playlist_collabs: contextSettings.playlist_collabs ?? true,
+      marketing_emails: contextSettings.marketing_emails ?? false,
+      audio_quality: contextSettings.audio_quality || 'high',
+      crossfade: contextSettings.crossfade ?? true,
+      crossfade_duration: contextSettings.crossfade_duration ?? 5,
+      normalize_volume: contextSettings.normalize_volume ?? true,
+      autoplay: contextSettings.autoplay ?? true,
+      gapless_playback: contextSettings.gapless_playback ?? false,
+      theme: contextSettings.theme || 'dark',
+      compact_mode: contextSettings.compact_mode ?? false,
+      show_lyrics: contextSettings.show_lyrics ?? true,
+      animations: contextSettings.animations ?? true,
+      font_size: contextSettings.font_size || 'medium',
+      private_profile: contextSettings.private_profile ?? false,
+      activity_sharing: contextSettings.activity_sharing ?? true,
+      listening_history: contextSettings.listening_history ?? true,
+      show_followers: contextSettings.show_followers ?? true,
+      allow_messages: contextSettings.allow_messages || 'everyone',
+      two_factor: contextSettings.two_factor ?? false,
+      login_alerts: contextSettings.login_alerts ?? true,
+      language: contextSettings.language || 'en',
+    })
+    
+    setLoading(false)
+  }, [user, contextSettings])
 
   const showSuccess = (text) => {
     setMessage({ type: 'success', text })
@@ -157,7 +141,6 @@ const Settings = () => {
   const handleProfileUpdate = async () => {
     setSaving(true)
     try {
-      // Only send fields that exist on User model
       const profileData = {
         full_name: profile.full_name,
         username: profile.username,
@@ -177,8 +160,6 @@ const Settings = () => {
   const handleSaveSettings = async (section) => {
     setSaving(true)
     try {
-      // Build the payload based on which settings changed
-      // We send all settings to keep it simple
       const payload = {
         push_notifications: settings.push_notifications,
         email_notifications: settings.email_notifications,
@@ -208,6 +189,8 @@ const Settings = () => {
       }
       
       await userApi.updateSettings(payload)
+      // Update context so the whole app gets the new settings immediately
+      updateSettings(payload)
       showSuccess(`${section} settings saved successfully!`)
     } catch (err) {
       console.error('Save settings error:', err)
