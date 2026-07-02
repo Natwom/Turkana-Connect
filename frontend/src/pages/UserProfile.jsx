@@ -141,6 +141,24 @@ const UserProfile = () => {
     fetchAllData()
   }, [user])
 
+  // Refresh liked songs every time the "Liked" tab is opened
+  useEffect(() => {
+    if (activeTab === 'liked' && user) {
+      const fetchLiked = async () => {
+        setLoading(prev => ({ ...prev, liked: true }))
+        try {
+          const likedRes = await likesApi.getMy()
+          setLikedSongs(likedRes.data || [])
+        } catch (err) {
+          console.error('Liked songs refresh failed:', err)
+        } finally {
+          setLoading(prev => ({ ...prev, liked: false }))
+        }
+      }
+      fetchLiked()
+    }
+  }, [activeTab, user])
+
   if (!user) {
     return (
       <div className="min-h-screen flex items-center justify-center relative overflow-hidden">
