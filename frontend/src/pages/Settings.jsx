@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useNavigate } from 'react-router-dom'
 import api from '../api/axios'
+import userApi from '../api/user'
 import { useAuth } from '../context/AuthContext'
 import { 
   User, Bell, Lock, Palette, Globe, Volume2, 
@@ -14,7 +15,7 @@ const Settings = () => {
   const navigate = useNavigate()
   const { user, logout } = useAuth()
   
-  const [loading, setLoading] = useState(false)
+  const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [message, setMessage] = useState(null)
   const [activeTab, setActiveTab] = useState('profile')
@@ -22,60 +23,45 @@ const Settings = () => {
 
   // Profile state
   const [profile, setProfile] = useState({
-    full_name: user?.full_name || '',
-    username: user?.username || '',
-    email: user?.email || '',
-    bio: user?.bio || '',
-    phone: user?.phone || '',
-    location: user?.location || 'Turkana, Kenya'
+    full_name: '',
+    username: '',
+    email: '',
+    bio: '',
   })
 
-  // Notification state
-  const [notifications, setNotifications] = useState({
-    push: true,
-    email: true,
-    new_releases: true,
+  // Settings state (maps to UserSettings table)
+  const [settings, setSettings] = useState({
+    // Notifications
+    push_notifications: true,
+    email_notifications: true,
+    new_release_alerts: true,
     artist_updates: false,
     playlist_collabs: true,
-    marketing: false
-  })
-
-  // Playback state
-  const [playback, setPlayback] = useState({
-    quality: 'high',
+    marketing_emails: false,
+    // Playback
+    audio_quality: 'high',
     crossfade: true,
     crossfade_duration: 5,
-    normalize: true,
+    normalize_volume: true,
     autoplay: true,
-    gapless: false
-  })
-
-  // Appearance state
-  const [appearance, setAppearance] = useState({
+    gapless_playback: false,
+    // Appearance
     theme: 'dark',
     compact_mode: false,
     show_lyrics: true,
     animations: true,
-    font_size: 'medium'
-  })
-
-  // Privacy state
-  const [privacy, setPrivacy] = useState({
+    font_size: 'medium',
+    // Privacy
     private_profile: false,
     activity_sharing: true,
     listening_history: true,
     show_followers: true,
-    allow_messages: 'everyone'
-  })
-
-  // Language state
-  const [language, setLanguage] = useState('en')
-
-  // Security state
-  const [security, setSecurity] = useState({
+    allow_messages: 'everyone',
+    // Security
     two_factor: false,
     login_alerts: true,
-    trusted_devices: 3
+    // Language
+    language: 'en',
   })
 
   const languages = [
@@ -101,29 +87,133 @@ const Settings = () => {
     { id: 'language', label: 'Language', icon: Globe, color: 'text-cyan-400' },
   ]
 
-  const handleSave = async (section) => {
-    setSaving(true)
-    setMessage(null)
-    
-    // Simulate API call
-    await new Promise(r => setTimeout(r, 800))
-    
-    setMessage({ type: 'success', text: `${section} settings saved successfully!` })
-    setSaving(false)
-    
+  // Load user and settings from backend on mount
+  useEffect(() => {
+    if (!user) return
+
+    const loadData = async () => {
+      setLoading(true)
+      try {
+        // Load profile from user object
+        setProfile({
+          full_name: user.full_name || '',
+          username: user.username || '',
+          email: user.email || '',
+          bio: user.bio || '',
+        })
+
+        // Load settings from backend
+        const settingsRes = await userApi.getSettings()
+        const s = settingsRes.data
+        setSettings({
+          push_notifications: s.push_notifications ?? true,
+          email_notifications: s.email_notifications ?? true,
+          new_release_alerts: s.new_release_alerts ?? true,
+          artist_updates: s.artist_updates ?? false,
+          playlist_collabs: s.playlist_collabs ?? true,
+          marketing_emails: s.marketing_emails ?? false,
+          audio_quality: s.audio_quality || 'high',
+          crossfade: s.crossfade ?? true,
+          crossfade_duration: s.crossfade_duration ?? 5,
+          normalize_volume: s.normalize_volume ?? true,
+          autoplay: s.autoplay ?? true,
+          gapless_playback: s.gapless_playback ?? false,
+          theme: s.theme || 'dark',
+          compact_mode: s.compact_mode ?? false,
+          show_lyrics: s.show_lyrics ?? true,
+          animations: s.animations ?? true,
+          font_size: s.font_size || 'medium',
+          private_profile: s.private_profile ?? false,
+          activity_sharing: s.activity_sharing ?? true,
+          listening_history: s.listening_history ?? true,
+          show_followers: s.show_followers ?? true,
+          allow_messages: s.allow_messages || 'everyone',
+          two_factor: s.two_factor ?? false,
+          login_alerts: s.login_alerts ?? true,
+          language: s.language || 'en',
+        })
+      } catch (err) {
+        console.error('Failed to load settings:', err)
+        setMessage({ type: 'error', text: 'Failed to load settings' })
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    loadData()
+  }, [user])
+
+  const showSuccess = (text) => {
+    setMessage({ type: 'success', text })
     setTimeout(() => setMessage(null), 3000)
   }
 
+  const showError = (text) => {
+    setMessage({ type: 'error', text })
+    setTimeout(() => setMessage(null), 5000)
+  }
+
+  // Save profile (User table fields only)
   const handleProfileUpdate = async () => {
     setSaving(true)
     try {
-      await api.patch('/api/v1/users/me', profile)
-      setMessage({ type: 'success', text: 'Profile updated successfully!' })
+      // Only send fields that exist on User model
+      const profileData = {
+        full_name: profile.full_name,
+        username: profile.username,
+        email: profile.email,
+        bio: profile.bio,
+      }
+      await userApi.updateMe(profileData)
+      showSuccess('Profile updated successfully!')
     } catch (err) {
-      setMessage({ type: 'error', text: err.response?.data?.detail || 'Failed to update profile' })
+      showError(err.response?.data?.detail || 'Failed to update profile')
     } finally {
       setSaving(false)
-      setTimeout(() => setMessage(null), 3000)
+    }
+  }
+
+  // Save settings (UserSettings table)
+  const handleSaveSettings = async (section) => {
+    setSaving(true)
+    try {
+      // Build the payload based on which settings changed
+      // We send all settings to keep it simple
+      const payload = {
+        push_notifications: settings.push_notifications,
+        email_notifications: settings.email_notifications,
+        new_release_alerts: settings.new_release_alerts,
+        artist_updates: settings.artist_updates,
+        playlist_collabs: settings.playlist_collabs,
+        marketing_emails: settings.marketing_emails,
+        audio_quality: settings.audio_quality,
+        crossfade: settings.crossfade,
+        crossfade_duration: settings.crossfade_duration,
+        normalize_volume: settings.normalize_volume,
+        autoplay: settings.autoplay,
+        gapless_playback: settings.gapless_playback,
+        theme: settings.theme,
+        compact_mode: settings.compact_mode,
+        show_lyrics: settings.show_lyrics,
+        animations: settings.animations,
+        font_size: settings.font_size,
+        private_profile: settings.private_profile,
+        activity_sharing: settings.activity_sharing,
+        listening_history: settings.listening_history,
+        show_followers: settings.show_followers,
+        allow_messages: settings.allow_messages,
+        two_factor: settings.two_factor,
+        login_alerts: settings.login_alerts,
+        language: settings.language,
+      }
+      
+      await userApi.updateSettings(payload)
+      showSuccess(`${section} settings saved successfully!`)
+    } catch (err) {
+      console.error('Save settings error:', err)
+      showError(err.response?.data?.detail || 'Failed to save settings')
+    } finally {
+      setSaving(false)
     }
   }
 
@@ -134,8 +224,12 @@ const Settings = () => {
       logout()
       navigate('/')
     } catch (err) {
-      setMessage({ type: 'error', text: 'Failed to delete account' })
+      showError('Failed to delete account')
     }
+  }
+
+  const updateSetting = (key, value) => {
+    setSettings(prev => ({ ...prev, [key]: value }))
   }
 
   const Toggle = ({ value, onChange, label, description }) => (
@@ -176,10 +270,10 @@ const Settings = () => {
       </div>
       {onSave && (
         <div className="px-6 py-4 bg-white/5 border-t border-white/5 flex items-center justify-between">
-          <p className="text-xs text-gray-500">Changes are saved automatically</p>
+          <p className="text-xs text-gray-500">Click Save to persist changes</p>
           <button
             onClick={onSave}
-            disabled={saving}
+            disabled={saving || loading}
             className="flex items-center gap-2 px-4 py-2 bg-primary hover:bg-primary/90 rounded-xl text-sm font-semibold transition-all disabled:opacity-50"
           >
             {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
@@ -189,6 +283,14 @@ const Settings = () => {
       )}
     </motion.div>
   )
+
+  if (loading) {
+    return (
+      <div className="max-w-4xl mx-auto pb-20 flex items-center justify-center min-h-[60vh]">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    )
+  }
 
   return (
     <div className="max-w-4xl mx-auto pb-20">
@@ -307,19 +409,6 @@ const Settings = () => {
                       />
                     </div>
                   </div>
-                  <div>
-                    <label className="block text-xs font-medium text-gray-500 mb-1.5">Phone</label>
-                    <div className="flex items-center gap-2">
-                      <Smartphone className="w-4 h-4 text-gray-500 absolute ml-3" />
-                      <input
-                        type="tel"
-                        value={profile.phone}
-                        onChange={(e) => setProfile({...profile, phone: e.target.value})}
-                        placeholder="+254 7XX XXX XXX"
-                        className="w-full pl-10 pr-4 py-2.5 bg-background border border-white/10 rounded-xl text-sm focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all"
-                      />
-                    </div>
-                  </div>
                   <div className="md:col-span-2">
                     <label className="block text-xs font-medium text-gray-500 mb-1.5">Bio</label>
                     <textarea
@@ -328,15 +417,6 @@ const Settings = () => {
                       onChange={(e) => setProfile({...profile, bio: e.target.value})}
                       placeholder="Tell us about yourself..."
                       className="w-full px-4 py-2.5 bg-background border border-white/10 rounded-xl text-sm focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all resize-none"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-medium text-gray-500 mb-1.5">Location</label>
-                    <input
-                      type="text"
-                      value={profile.location}
-                      onChange={(e) => setProfile({...profile, location: e.target.value})}
-                      className="w-full px-4 py-2.5 bg-background border border-white/10 rounded-xl text-sm focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all"
                     />
                   </div>
                 </div>
@@ -415,23 +495,23 @@ const Settings = () => {
               exit={{ opacity: 0, x: -20 }}
               className="space-y-6"
             >
-              <Section title="Push Notifications" icon={Bell} onSave={() => handleSave('Notification')}>
+              <Section title="Push Notifications" icon={Bell} onSave={() => handleSaveSettings('Notification')}>
                 <Toggle 
-                  value={notifications.push} 
-                  onChange={(v) => setNotifications({...notifications, push: v})}
+                  value={settings.push_notifications} 
+                  onChange={(v) => updateSetting('push_notifications', v)}
                   label="Enable Push Notifications"
                   description="Receive notifications on your device"
                 />
                 <div className="border-t border-white/5" />
                 <Toggle 
-                  value={notifications.new_releases} 
-                  onChange={(v) => setNotifications({...notifications, new_releases: v})}
+                  value={settings.new_release_alerts} 
+                  onChange={(v) => updateSetting('new_release_alerts', v)}
                   label="New Releases"
                   description="Get notified when artists you follow release new music"
                 />
                 <Toggle 
-                  value={notifications.artist_updates} 
-                  onChange={(v) => setNotifications({...notifications, artist_updates: v})}
+                  value={settings.artist_updates} 
+                  onChange={(v) => updateSetting('artist_updates', v)}
                   label="Artist Updates"
                   description="News and updates from your favorite artists"
                 />
@@ -439,20 +519,20 @@ const Settings = () => {
 
               <Section title="Email Notifications" icon={Mail}>
                 <Toggle 
-                  value={notifications.email} 
-                  onChange={(v) => setNotifications({...notifications, email: v})}
+                  value={settings.email_notifications} 
+                  onChange={(v) => updateSetting('email_notifications', v)}
                   label="Email Digest"
                   description="Weekly summary of your activity"
                 />
                 <Toggle 
-                  value={notifications.playlist_collabs} 
-                  onChange={(v) => setNotifications({...notifications, playlist_collabs: v})}
+                  value={settings.playlist_collabs} 
+                  onChange={(v) => updateSetting('playlist_collabs', v)}
                   label="Playlist Collaborations"
                   description="When someone adds to your collaborative playlists"
                 />
                 <Toggle 
-                  value={notifications.marketing} 
-                  onChange={(v) => setNotifications({...notifications, marketing: v})}
+                  value={settings.marketing_emails} 
+                  onChange={(v) => updateSetting('marketing_emails', v)}
                   label="Promotional Emails"
                   description="Special offers and music recommendations"
                 />
@@ -469,23 +549,23 @@ const Settings = () => {
               exit={{ opacity: 0, x: -20 }}
               className="space-y-6"
             >
-              <Section title="Audio Quality" icon={Volume2} onSave={() => handleSave('Playback')}>
+              <Section title="Audio Quality" icon={Volume2} onSave={() => handleSaveSettings('Playback')}>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
                   {audioQualities.map((q) => (
                     <button
                       key={q.value}
-                      onClick={() => setPlayback({...playback, quality: q.value})}
+                      onClick={() => updateSetting('audio_quality', q.value)}
                       className={`p-4 rounded-xl border text-left transition-all ${
-                        playback.quality === q.value 
+                        settings.audio_quality === q.value 
                           ? 'border-primary bg-primary/10' 
                           : 'border-white/5 bg-background hover:border-white/10'
                       }`}
                     >
                       <div className="flex items-center justify-between mb-1">
-                        <span className={`font-semibold text-sm ${playback.quality === q.value ? 'text-primary' : ''}`}>
+                        <span className={`font-semibold text-sm ${settings.audio_quality === q.value ? 'text-primary' : ''}`}>
                           {q.label}
                         </span>
-                        {playback.quality === q.value && <Check className="w-4 h-4 text-primary" />}
+                        {settings.audio_quality === q.value && <Check className="w-4 h-4 text-primary" />}
                       </div>
                       <p className="text-xs text-gray-500">{q.desc}</p>
                     </button>
@@ -495,39 +575,39 @@ const Settings = () => {
 
               <Section title="Playback Behavior" icon={Volume2}>
                 <Toggle 
-                  value={playback.crossfade} 
-                  onChange={(v) => setPlayback({...playback, crossfade: v})}
+                  value={settings.crossfade} 
+                  onChange={(v) => updateSetting('crossfade', v)}
                   label="Crossfade Songs"
                   description="Smoothly transition between tracks"
                 />
-                {playback.crossfade && (
+                {settings.crossfade && (
                   <div className="pl-4 border-l-2 border-primary/20 ml-6 mb-3">
-                    <label className="block text-xs text-gray-500 mb-2">Crossfade Duration: {playback.crossfade_duration}s</label>
+                    <label className="block text-xs text-gray-500 mb-2">Crossfade Duration: {settings.crossfade_duration}s</label>
                     <input
                       type="range"
                       min={1}
                       max={12}
-                      value={playback.crossfade_duration}
-                      onChange={(e) => setPlayback({...playback, crossfade_duration: parseInt(e.target.value)})}
+                      value={settings.crossfade_duration}
+                      onChange={(e) => updateSetting('crossfade_duration', parseInt(e.target.value))}
                       className="w-full h-2 bg-surface rounded-full appearance-none cursor-pointer accent-primary"
                     />
                   </div>
                 )}
                 <Toggle 
-                  value={playback.normalize} 
-                  onChange={(v) => setPlayback({...playback, normalize: v})}
+                  value={settings.normalize_volume} 
+                  onChange={(v) => updateSetting('normalize_volume', v)}
                   label="Normalize Volume"
                   description="Keep consistent volume across tracks"
                 />
                 <Toggle 
-                  value={playback.autoplay} 
-                  onChange={(v) => setPlayback({...playback, autoplay: v})}
+                  value={settings.autoplay} 
+                  onChange={(v) => updateSetting('autoplay', v)}
                   label="Autoplay"
                   description="Automatically play similar songs when queue ends"
                 />
                 <Toggle 
-                  value={playback.gapless} 
-                  onChange={(v) => setPlayback({...playback, gapless: v})}
+                  value={settings.gapless_playback} 
+                  onChange={(v) => updateSetting('gapless_playback', v)}
                   label="Gapless Playback"
                   description="Remove silence between tracks for albums"
                 />
@@ -544,7 +624,7 @@ const Settings = () => {
               exit={{ opacity: 0, x: -20 }}
               className="space-y-6"
             >
-              <Section title="Theme" icon={Palette} onSave={() => handleSave('Appearance')}>
+              <Section title="Theme" icon={Palette} onSave={() => handleSaveSettings('Appearance')}>
                 <div className="grid grid-cols-3 gap-3">
                   {[
                     { value: 'dark', label: 'Dark', icon: Moon, preview: 'bg-gray-900' },
@@ -553,16 +633,16 @@ const Settings = () => {
                   ].map((theme) => (
                     <button
                       key={theme.value}
-                      onClick={() => setAppearance({...appearance, theme: theme.value})}
+                      onClick={() => updateSetting('theme', theme.value)}
                       className={`p-4 rounded-xl border text-center transition-all ${
-                        appearance.theme === theme.value 
+                        settings.theme === theme.value 
                           ? 'border-primary bg-primary/10' 
                           : 'border-white/5 bg-background hover:border-white/10'
                       }`}
                     >
                       <div className={`w-12 h-12 ${theme.preview} rounded-xl mx-auto mb-2 border border-white/10`} />
-                      <theme.icon className={`w-5 h-5 mx-auto mb-1 ${appearance.theme === theme.value ? 'text-primary' : 'text-gray-500'}`} />
-                      <span className={`text-sm font-medium ${appearance.theme === theme.value ? 'text-primary' : ''}`}>{theme.label}</span>
+                      <theme.icon className={`w-5 h-5 mx-auto mb-1 ${settings.theme === theme.value ? 'text-primary' : 'text-gray-500'}`} />
+                      <span className={`text-sm font-medium ${settings.theme === theme.value ? 'text-primary' : ''}`}>{theme.label}</span>
                     </button>
                   ))}
                 </div>
@@ -570,20 +650,20 @@ const Settings = () => {
 
               <Section title="Display Options" icon={Palette}>
                 <Toggle 
-                  value={appearance.compact_mode} 
-                  onChange={(v) => setAppearance({...appearance, compact_mode: v})}
+                  value={settings.compact_mode} 
+                  onChange={(v) => updateSetting('compact_mode', v)}
                   label="Compact Mode"
                   description="Show more content with less spacing"
                 />
                 <Toggle 
-                  value={appearance.show_lyrics} 
-                  onChange={(v) => setAppearance({...appearance, show_lyrics: v})}
+                  value={settings.show_lyrics} 
+                  onChange={(v) => updateSetting('show_lyrics', v)}
                   label="Show Lyrics"
                   description="Display lyrics panel when available"
                 />
                 <Toggle 
-                  value={appearance.animations} 
-                  onChange={(v) => setAppearance({...appearance, animations: v})}
+                  value={settings.animations} 
+                  onChange={(v) => updateSetting('animations', v)}
                   label="Animations"
                   description="Enable smooth transitions and effects"
                 />
@@ -593,9 +673,9 @@ const Settings = () => {
                     {['small', 'medium', 'large'].map((size) => (
                       <button
                         key={size}
-                        onClick={() => setAppearance({...appearance, font_size: size})}
+                        onClick={() => updateSetting('font_size', size)}
                         className={`flex-1 py-2 rounded-xl text-sm font-medium capitalize transition-all ${
-                          appearance.font_size === size 
+                          settings.font_size === size 
                             ? 'bg-primary text-white' 
                             : 'bg-background border border-white/5 hover:border-white/10'
                         }`}
@@ -618,22 +698,22 @@ const Settings = () => {
               exit={{ opacity: 0, x: -20 }}
               className="space-y-6"
             >
-              <Section title="Profile Visibility" icon={Shield} onSave={() => handleSave('Privacy')}>
+              <Section title="Profile Visibility" icon={Shield} onSave={() => handleSaveSettings('Privacy')}>
                 <Toggle 
-                  value={privacy.private_profile} 
-                  onChange={(v) => setPrivacy({...privacy, private_profile: v})}
+                  value={settings.private_profile} 
+                  onChange={(v) => updateSetting('private_profile', v)}
                   label="Private Profile"
                   description="Only approved followers can see your activity"
                 />
                 <Toggle 
-                  value={privacy.activity_sharing} 
-                  onChange={(v) => setPrivacy({...privacy, activity_sharing: v})}
+                  value={settings.activity_sharing} 
+                  onChange={(v) => updateSetting('activity_sharing', v)}
                   label="Share Activity"
                   description="Show what you're listening to in real-time"
                 />
                 <Toggle 
-                  value={privacy.show_followers} 
-                  onChange={(v) => setPrivacy({...privacy, show_followers: v})}
+                  value={settings.show_followers} 
+                  onChange={(v) => updateSetting('show_followers', v)}
                   label="Show Follower Count"
                   description="Display your follower count on your profile"
                 />
@@ -646,9 +726,9 @@ const Settings = () => {
                     {['everyone', 'followers', 'nobody'].map((option) => (
                       <button
                         key={option}
-                        onClick={() => setPrivacy({...privacy, allow_messages: option})}
+                        onClick={() => updateSetting('allow_messages', option)}
                         className={`flex-1 py-2 rounded-xl text-sm font-medium capitalize transition-all ${
-                          privacy.allow_messages === option 
+                          settings.allow_messages === option 
                             ? 'bg-primary text-white' 
                             : 'bg-background border border-white/5 hover:border-white/10'
                         }`}
@@ -659,8 +739,8 @@ const Settings = () => {
                   </div>
                 </div>
                 <Toggle 
-                  value={privacy.listening_history} 
-                  onChange={(v) => setPrivacy({...privacy, listening_history: v})}
+                  value={settings.listening_history} 
+                  onChange={(v) => updateSetting('listening_history', v)}
                   label="Save Listening History"
                   description="Track your plays for recommendations"
                 />
@@ -677,16 +757,16 @@ const Settings = () => {
               exit={{ opacity: 0, x: -20 }}
               className="space-y-6"
             >
-              <Section title="Authentication" icon={Lock} onSave={() => handleSave('Security')}>
+              <Section title="Authentication" icon={Lock} onSave={() => handleSaveSettings('Security')}>
                 <Toggle 
-                  value={security.two_factor} 
-                  onChange={(v) => setSecurity({...security, two_factor: v})}
+                  value={settings.two_factor} 
+                  onChange={(v) => updateSetting('two_factor', v)}
                   label="Two-Factor Authentication"
                   description="Require a code from your phone to log in"
                 />
                 <Toggle 
-                  value={security.login_alerts} 
-                  onChange={(v) => setSecurity({...security, login_alerts: v})}
+                  value={settings.login_alerts} 
+                  onChange={(v) => updateSetting('login_alerts', v)}
                   label="Login Alerts"
                   description="Get notified of new sign-ins to your account"
                 />
@@ -704,7 +784,6 @@ const Settings = () => {
                     </div>
                     <span className="text-xs text-green-400 font-medium">Active</span>
                   </div>
-                  <p className="text-xs text-gray-500">Trusted devices: {security.trusted_devices}</p>
                 </div>
               </Section>
             </motion.div>
@@ -719,14 +798,14 @@ const Settings = () => {
               exit={{ opacity: 0, x: -20 }}
               className="space-y-6"
             >
-              <Section title="Language & Region" icon={Globe} onSave={() => handleSave('Language')}>
+              <Section title="Language & Region" icon={Globe} onSave={() => handleSaveSettings('Language')}>
                 <div className="space-y-3">
                   {languages.map((lang) => (
                     <button
                       key={lang.code}
-                      onClick={() => setLanguage(lang.code)}
+                      onClick={() => updateSetting('language', lang.code)}
                       className={`w-full flex items-center justify-between p-4 rounded-xl border transition-all ${
-                        language === lang.code 
+                        settings.language === lang.code 
                           ? 'border-primary bg-primary/10' 
                           : 'border-white/5 bg-background hover:border-white/10'
                       }`}
@@ -734,11 +813,11 @@ const Settings = () => {
                       <div className="flex items-center gap-3">
                         <span className="text-2xl">{lang.flag}</span>
                         <div className="text-left">
-                          <p className={`font-semibold ${language === lang.code ? 'text-primary' : ''}`}>{lang.name}</p>
+                          <p className={`font-semibold ${settings.language === lang.code ? 'text-primary' : ''}`}>{lang.name}</p>
                           <p className="text-xs text-gray-500">{lang.code.toUpperCase()}</p>
                         </div>
                       </div>
-                      {language === lang.code && <Check className="w-5 h-5 text-primary" />}
+                      {settings.language === lang.code && <Check className="w-5 h-5 text-primary" />}
                     </button>
                   ))}
                 </div>

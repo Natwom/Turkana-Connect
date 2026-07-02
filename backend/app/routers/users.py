@@ -40,7 +40,7 @@ def update_me(
 ):
     update_data = user_update.model_dump(exclude_unset=True)
     for field, value in update_data.items():
-        if hasattr(current_user, field):
+        if hasattr(current_user, field) and field != 'id':
             setattr(current_user, field, value)
     db.commit()
     db.refresh(current_user)
