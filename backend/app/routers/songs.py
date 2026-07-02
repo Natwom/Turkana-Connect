@@ -71,7 +71,6 @@ def get_song(song_id: int, db: Session = Depends(get_db)):
     if not song:
         raise HTTPException(404, "Song not found")
     return song
-
 @router.post("/{song_id}/play")
 def record_play(song_id: int, db: Session = Depends(get_db)):
     song = db.query(models.Song).filter(models.Song.id == song_id).first()
