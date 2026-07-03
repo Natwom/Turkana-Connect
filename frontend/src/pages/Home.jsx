@@ -55,9 +55,8 @@ const Home = () => {
         let catsData = []
         let errors = []
 
-        // FIX: Fetch trending and new releases as SEPARATE API calls with proper sorting
         try {
-          const trendingRes = await songsApi.getTrendingSongs(6)
+          const trendingRes = await songsApi.getTrendingSongs(12)
           trendingData = Array.isArray(trendingRes.data) ? trendingRes.data : []
         } catch (e) {
           console.error('Trending fetch failed:', e.message)
@@ -65,7 +64,7 @@ const Home = () => {
         }
 
         try {
-          const newReleasesRes = await songsApi.getNewReleases(6)
+          const newReleasesRes = await songsApi.getNewReleases(12)
           newReleasesData = Array.isArray(newReleasesRes.data) ? newReleasesRes.data : []
         } catch (e) {
           console.error('New releases fetch failed:', e.message)
@@ -88,11 +87,8 @@ const Home = () => {
           errors.push('categories')
         }
 
-        // FIX: Set trending from trending API (sorted by play_count desc)
         setTrending(trendingData)
-        // FIX: Set new releases from new releases API (sorted by created_at desc)
         setNewReleases(newReleasesData)
-        // FIX: Featured song = top trending song (most played)
         setFeaturedSong(trendingData[0] || newReleasesData[0] || null)
         setArtists(artistsData)
         setCategories(catsData.slice(0, 6))
@@ -115,8 +111,23 @@ const Home = () => {
     fetchData()
   }, [])
 
-  const handlePlaySong = (song) => {
-    if (player?.playSong) player.playSong(song)
+  // FIX: Pass the full list so queue has all songs for next/previous
+  const handlePlayTrending = (song) => {
+    if (player?.playSong) {
+      player.playSong(song, trending)
+    }
+  }
+
+  const handlePlayNewRelease = (song) => {
+    if (player?.playSong) {
+      player.playSong(song, newReleases)
+    }
+  }
+
+  const handlePlayFeatured = () => {
+    if (player?.playSong && featuredSong) {
+      player.playSong(featuredSong, trending)
+    }
   }
 
   const getArtistName = (song) => {
@@ -190,7 +201,7 @@ const Home = () => {
               className="w-full h-full object-cover"
               onError={(e) => { e.target.src = '/default-cover.jpg' }}
             />
-            <button onClick={() => handlePlaySong(featuredSong)} className="absolute inset-0 bg-black/40 opacity-0 hover:opacity-100 flex items-center justify-center transition-opacity">
+            <button onClick={handlePlayFeatured} className="absolute inset-0 bg-black/40 opacity-0 hover:opacity-100 flex items-center justify-center transition-opacity">
               <Play className="w-12 h-12 fill-current text-white" />
             </button>
           </div>
@@ -203,7 +214,7 @@ const Home = () => {
             <h1 className="text-2xl md:text-4xl font-bold mb-1 truncate">{featuredSong?.title || 'Discover Apiaro Music'}</h1>
             <p className="text-gray-400 text-sm mb-3">{getArtistName(featuredSong)}</p>
             <div className="flex items-center gap-3">
-              <button onClick={() => handlePlaySong(featuredSong)} className="flex items-center gap-2 px-5 py-2.5 bg-primary hover:bg-primary/90 rounded-xl font-semibold text-sm transition-all hover:scale-105">
+              <button onClick={handlePlayFeatured} className="flex items-center gap-2 px-5 py-2.5 bg-primary hover:bg-primary/90 rounded-xl font-semibold text-sm transition-all hover:scale-105">
                 <Play className="w-4 h-4 fill-current" /> Play Now
               </button>
               <button onClick={() => featuredSong && navigate(`/artist/${featuredSong.artist_id}`)} className="flex items-center gap-2 px-5 py-2.5 bg-white/10 hover:bg-white/20 rounded-xl font-medium text-sm transition-all">
@@ -270,7 +281,7 @@ const Home = () => {
                 transition={{ delay: i * 0.05 }}
                 onMouseEnter={() => setHoveredSong(song.id)}
                 onMouseLeave={() => setHoveredSong(null)}
-                onClick={() => handlePlaySong(song)}
+                onClick={() => handlePlayTrending(song)}
                 className="group cursor-pointer"
               >
                 <div className="relative aspect-square rounded-xl overflow-hidden mb-2">
@@ -364,7 +375,7 @@ const Home = () => {
                 initial={{ opacity: 0, x: -10 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ delay: i * 0.03 }}
-                onClick={() => handlePlaySong(song)}
+                onClick={() => handlePlayNewRelease(song)}
                 className="group flex items-center gap-3 p-2.5 rounded-xl hover:bg-surface/80 cursor-pointer transition-all"
               >
                 <div className="relative w-14 h-14 rounded-lg overflow-hidden flex-shrink-0">

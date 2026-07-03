@@ -29,7 +29,7 @@ const MusicPlayer = () => {
   const { settings } = useSettings()
   const { 
     currentSong, isPlaying, togglePlay, playNext, 
-    playPrevious, isShuffle, setIsShuffle, isRepeat, setIsRepeat 
+    playPrevious, isShuffle, setIsShuffle, isRepeat, setIsRepeat, queue
   } = player
   
   const [progress, setProgress] = useState(0)
@@ -47,8 +47,17 @@ const MusicPlayer = () => {
     }
   }, [settings.normalize_volume])
 
+  // FIX: handleEnded now respects repeat mode
   const handleEnded = () => {
-    if (settings.autoplay) {
+    if (isRepeat) {
+      // Repeat: restart the same song
+      if (audioRef.current) {
+        audioRef.current.currentTime = 0
+        audioRef.current.play().catch(err => {
+          console.error('Repeat play failed:', err)
+        })
+      }
+    } else if (settings.autoplay) {
       playNext?.()
     } else {
       togglePlay?.()
@@ -162,6 +171,9 @@ const MusicPlayer = () => {
 
   if (!currentSong) return null
 
+  // FIX: Show queue count in the UI
+  const queueCount = queue?.length || 0
+
   return (
     <motion.div 
       initial={{ y: 100 }}
@@ -188,7 +200,6 @@ const MusicPlayer = () => {
           />
           <div className="min-w-0">
             <h4 className="font-semibold text-sm truncate">{currentSong.title}</h4>
-            {/* FIX: Use artist_name first, then artist?.stage_name, then fallback */}
             <p className="text-xs text-gray-400 truncate">
               {currentSong.artist_name || currentSong.artist?.stage_name || 'Unknown Artist'}
             </p>
@@ -217,10 +228,15 @@ const MusicPlayer = () => {
             <button 
               onClick={() => setIsShuffle?.(!isShuffle)}
               className={`p-2 rounded-lg transition-colors ${isShuffle ? 'text-primary' : 'text-gray-400 hover:text-white'}`}
+              title="Shuffle"
             >
               <Shuffle className="w-4 h-4" />
             </button>
-            <button onClick={() => playPrevious?.()} className="p-2 hover:bg-white/5 rounded-lg text-gray-300 hover:text-white transition-colors">
+            <button 
+              onClick={() => playPrevious?.()} 
+              className="p-2 hover:bg-white/5 rounded-lg text-gray-300 hover:text-white transition-colors"
+              title="Previous"
+            >
               <SkipBack className="w-5 h-5" />
             </button>
             <button 
@@ -233,12 +249,17 @@ const MusicPlayer = () => {
                 <Play className="w-5 h-5 text-background ml-0.5" />
               )}
             </button>
-            <button onClick={() => playNext?.()} className="p-2 hover:bg-white/5 rounded-lg text-gray-300 hover:text-white transition-colors">
+            <button 
+              onClick={() => playNext?.()} 
+              className="p-2 hover:bg-white/5 rounded-lg text-gray-300 hover:text-white transition-colors"
+              title="Next"
+            >
               <SkipForward className="w-5 h-5" />
             </button>
             <button 
               onClick={() => setIsRepeat?.(!isRepeat)}
               className={`p-2 rounded-lg transition-colors ${isRepeat ? 'text-primary' : 'text-gray-400 hover:text-white'}`}
+              title="Repeat"
             >
               <Repeat className="w-4 h-4" />
             </button>
@@ -266,8 +287,13 @@ const MusicPlayer = () => {
 
         {/* Volume & Queue */}
         <div className="flex items-center gap-3 w-1/4 justify-end">
-          <button className="p-2 hover:bg-white/5 rounded-lg text-gray-400 hover:text-white transition-colors">
+          <button className="p-2 hover:bg-white/5 rounded-lg text-gray-400 hover:text-white transition-colors relative" title={`Queue (${queueCount})`}>
             <ListMusic className="w-5 h-5" />
+            {queueCount > 1 && (
+              <span className="absolute -top-1 -right-1 w-4 h-4 bg-primary text-white text-[10px] rounded-full flex items-center justify-center">
+                {queueCount}
+              </span>
+            )}
           </button>
           <div className="flex items-center gap-2">
             <button 
