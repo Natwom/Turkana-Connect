@@ -1,6 +1,8 @@
 from fastapi import APIRouter, Depends, UploadFile, File, Form, HTTPException
 from sqlalchemy.orm import Session
+from sqlalchemy import func, desc
 from typing import Optional, List
+from datetime import datetime, timedelta
 from app.database import get_db
 from app import models, schemas, auth
 from app.dependencies import save_upload_file
@@ -29,13 +31,11 @@ async def create_artist(
 ):
     print(f"DEBUG: create_artist called by user {current_user.id} ({current_user.email}), role={current_user.role}")
     
-    # Check if artist profile already exists
     existing = db.query(models.Artist).filter(models.Artist.user_id == current_user.id).first()
     if existing:
         print(f"DEBUG: Artist profile already exists for user {current_user.id}")
         raise HTTPException(400, "Artist profile already exists")
     
-    # Update user role to artist
     if current_user.role not in ["artist", "admin"]:
         print(f"DEBUG: Updating user {current_user.id} role from {current_user.role} to artist")
         current_user.role = "artist"
@@ -44,7 +44,6 @@ async def create_artist(
         db.refresh(current_user)
         print(f"DEBUG: User role updated to {current_user.role}")
     
-    # Handle image upload
     image_url = None
     if image:
         try:
@@ -59,7 +58,6 @@ async def create_artist(
             print(traceback.format_exc())
             raise HTTPException(500, f"Image upload failed: {str(e)}")
     
-    # Create artist
     try:
         db_artist = models.Artist(
             user_id=current_user.id,
@@ -74,7 +72,6 @@ async def create_artist(
         db.refresh(db_artist)
         print(f"DEBUG: Artist created successfully: {db_artist.id}")
         
-        # Notify admins about new artist application
         NotificationService.create_artist_application_notification(db, current_user)
         
         return db_artist
@@ -84,6 +81,159 @@ async def create_artist(
         print(traceback.format_exc())
         db.rollback()
         raise HTTPException(500, f"Failed to create artist: {str(e)}")
+
+# ============ NEW: ARTIST OWN PROFILE / DASHBOARD ============
+
+@router.get("/me", response_model=schemas.ArtistDashboard)
+def get_my_artist_profile(
+    current_user: models.User = Depends(auth.require_artist),
+    db: Session = Depends(get_db)
+):
+    """Get the logged-in artist's full dashboard profile (songs, albums, stats)"""
+    artist = db.query(models.Artist).filter(models.Artist.user_id == current_user.id).first()
+    if not artist:
+        raise HTTPException(404, "Artist profile not found. Please create one first.")
+    
+    # Aggregate stats
+    total_songs = db.query(func.count(models.Song.id)).filter(
+        models.Song.artist_id == artist.id
+    ).scalar() or 0
+    
+    total_albums = db.query(func.count(models.Album.id)).filter(
+        models.Album.artist_id == artist.id
+    ).scalar() or 0
+    
+    total_streams = db.query(func.sum(models.Song.play_count)).filter(
+        models.Song.artist_id == artist.id
+    ).scalar() or 0
+    
+    total_likes = db.query(func.sum(models.Song.likes_count)).filter(
+        models.Song.artist_id == artist.id
+    ).scalar() or 0
+    
+    pending_songs = db.query(func.count(models.Song.id)).filter(
+        models.Song.artist_id == artist.id,
+        models.Song.is_approved == False
+    ).scalar() or 0
+    
+    # Monthly listeners = unique users who played any of this artist's songs in last 30 days
+    song_ids = [s.id for s in artist.songs]
+    monthly_listeners = 0
+    if song_ids:
+        monthly_listeners = db.query(func.count(func.distinct(models.PlayHistory.user_id))).filter(
+            models.PlayHistory.song_id.in_(song_ids),
+            models.PlayHistory.played_at >= datetime.utcnow() - timedelta(days=30)
+        ).scalar() or 0
+    
+    # Build response manually so extra stats fields are included
+    artist_data = schemas.ArtistResponse.model_validate(artist).model_dump()
+    artist_data["songs"] = [schemas.SongResponse.model_validate(s).model_dump() for s in artist.songs]
+    artist_data["albums"] = [schemas.AlbumResponse.model_validate(a).model_dump() for a in artist.albums]
+    artist_data["total_songs"] = total_songs
+    artist_data["total_albums"] = total_albums
+    artist_data["total_streams"] = total_streams
+    artist_data["total_likes"] = total_likes
+    artist_data["pending_songs"] = pending_songs
+    artist_data["monthly_listeners"] = monthly_listeners
+    
+    return artist_data
+
+@router.patch("/me", response_model=schemas.ArtistResponse)
+async def update_my_artist_profile(
+    stage_name: Optional[str] = Form(None),
+    bio: Optional[str] = Form(None),
+    genre: Optional[str] = Form(None),
+    country: Optional[str] = Form(None),
+    region: Optional[str] = Form(None),
+    image: Optional[UploadFile] = File(None),
+    current_user: models.User = Depends(auth.require_artist),
+    db: Session = Depends(get_db)
+):
+    """Update the logged-in artist's profile info"""
+    artist = db.query(models.Artist).filter(models.Artist.user_id == current_user.id).first()
+    if not artist:
+        raise HTTPException(404, "Artist profile not found")
+    
+    if stage_name is not None:
+        artist.stage_name = stage_name
+    if bio is not None:
+        artist.bio = bio
+    if genre is not None:
+        artist.genre = genre
+    if country is not None:
+        artist.country = country
+    if region is not None:
+        artist.region = region
+    
+    if image:
+        try:
+            image_url = await save_upload_file(image, "images")
+            artist.image_url = image_url
+        except Exception as e:
+            raise HTTPException(500, f"Image upload failed: {str(e)}")
+    
+    db.commit()
+    db.refresh(artist)
+    return artist
+
+@router.get("/me/stats")
+def get_my_artist_stats(
+    current_user: models.User = Depends(auth.require_artist),
+    db: Session = Depends(get_db)
+):
+    """Get detailed analytics for the artist's dashboard charts"""
+    artist = db.query(models.Artist).filter(models.Artist.user_id == current_user.id).first()
+    if not artist:
+        raise HTTPException(404, "Artist profile not found")
+    
+    # Streams per song (top 10)
+    top_songs = db.query(
+        models.Song.id,
+        models.Song.title,
+        models.Song.play_count,
+        models.Song.likes_count
+    ).filter(
+        models.Song.artist_id == artist.id
+    ).order_by(desc(models.Song.play_count)).limit(10).all()
+    
+    # Streams over last 30 days (daily)
+    since = datetime.utcnow() - timedelta(days=30)
+    daily_streams = db.query(
+        func.date(models.PlayHistory.played_at).label('date'),
+        func.count(models.PlayHistory.id).label('stream_count')
+    ).join(
+        models.Song, models.PlayHistory.song_id == models.Song.id
+    ).filter(
+        models.Song.artist_id == artist.id,
+        models.PlayHistory.played_at >= since
+    ).group_by(
+        func.date(models.PlayHistory.played_at)
+    ).order_by('date').all()
+    
+    # Fill missing days
+    data_map = {str(d.date): d.stream_count for d in daily_streams}
+    stream_trend = []
+    for i in range(30):
+        date = (datetime.utcnow() - timedelta(days=29 - i)).strftime('%Y-%m-%d')
+        stream_trend.append({"date": date, "streams": data_map.get(date, 0)})
+    
+    # Recent followers (last 30 days)
+    recent_follows = db.query(func.count(models.Follow.id)).filter(
+        models.Follow.artist_id == artist.id,
+        models.Follow.created_at >= since
+    ).scalar() or 0
+    
+    return {
+        "top_songs": [
+            {"id": s.id, "title": s.title, "plays": s.play_count, "likes": s.likes_count}
+            for s in top_songs
+        ],
+        "stream_trend": stream_trend,
+        "recent_follows": recent_follows,
+        "total_followers": artist.followers_count
+    }
+
+# ============ PUBLIC ARTIST PROFILE ============
 
 @router.get("/{artist_id}", response_model=schemas.ArtistDetail)
 def get_artist(artist_id: int, db: Session = Depends(get_db)):
@@ -115,7 +265,6 @@ def follow_artist(
     db.commit()
     db.refresh(follow)
     
-    # Notify artist about new follower
     NotificationService.create_follow_notification(db, follow)
     
     return {"message": "Followed successfully"}

@@ -109,7 +109,7 @@ class SongCreate(SongBase):
 class SongResponse(SongBase):
     id: int
     artist_id: Optional[int] = None
-    artist_name: Optional[str] = None  # <-- NEW: flat artist name field
+    artist_name: Optional[str] = None
     album_id: Optional[int] = None
     category_id: Optional[int] = None
     audio_url: Optional[str] = None
@@ -133,6 +133,16 @@ class SongDetail(SongResponse):
     artist: Optional['ArtistResponse'] = None
     album: Optional['AlbumResponse'] = None
     category: Optional['CategoryResponse'] = None
+
+# ============ ARTIST DASHBOARD (OWN PROFILE) ============
+
+class ArtistDashboard(ArtistDetail):
+    total_songs: int = 0
+    total_albums: int = 0
+    total_streams: int = 0
+    total_likes: int = 0
+    pending_songs: int = 0
+    monthly_listeners: int = 0
 
 # ============ PLAYLIST SCHEMAS ============
 
@@ -319,3 +329,4 @@ ArtistDetail.model_rebuild()
 AlbumDetail.model_rebuild()
 SongDetail.model_rebuild()
 PlaylistDetail.model_rebuild()
+ArtistDashboard.model_rebuild()

@@ -1,4 +1,5 @@
 import { Routes, Route } from 'react-router-dom'
+import { useAuth } from './context/AuthContext'
 import Layout from './components/Layout'
 import Home from './pages/Home'
 import Search from './pages/Search'
@@ -8,10 +9,20 @@ import PlaylistPage from './pages/PlaylistPage'
 import Login from './pages/Login'
 import Register from './pages/Register'
 import UserProfile from './pages/UserProfile'
+import ArtistDashboard from './pages/ArtistDashboard'
 import Categories from './pages/Categories'
 import Settings from './pages/Settings'
 import BecomeArtist from './pages/BecomeArtist'
 import UploadSong from './pages/UploadSong'
+
+// NEW: Routes artists to their dashboard, normal users to standard profile
+function ProfileRouter() {
+  const { user } = useAuth()
+  if (user?.role === 'artist' || user?.role === 'admin') {
+    return <ArtistDashboard />
+  }
+  return <UserProfile />
+}
 
 function App() {
   return (
@@ -22,7 +33,7 @@ function App() {
         <Route path="artist/:id" element={<ArtistProfile />} />
         <Route path="album/:id" element={<AlbumPage />} />
         <Route path="playlist/:id" element={<PlaylistPage />} />
-        <Route path="profile" element={<UserProfile />} />
+        <Route path="profile" element={<ProfileRouter />} />
         <Route path="categories" element={<Categories />} />
         <Route path="settings" element={<Settings />} />
         <Route path="upload-song" element={<UploadSong />} />
