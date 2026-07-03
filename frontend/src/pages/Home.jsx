@@ -3,11 +3,12 @@ import { motion, useScroll, useTransform, AnimatePresence } from 'framer-motion'
 import { useNavigate } from 'react-router-dom'
 import api from '../api/axios'
 import songsApi from '../api/songs'
+import artistsApi from '../api/artists'
 import { usePlayer } from '../hooks/usePlayer'
 import { 
   TrendingUp, Disc, Users, Sparkles, Play, ChevronRight, 
   Headphones, Flame, Clock, Star, ArrowRight, Music, Mic2,
-  Radio, Award, Heart, Share2, BarChart3
+  Radio, Award, Heart, Share2, BarChart3, Eye
 } from 'lucide-react'
 
 const getImageUrl = (path) => {
@@ -35,13 +36,14 @@ const Home = () => {
 
   const [trending, setTrending] = useState([])
   const [newReleases, setNewReleases] = useState([])
-  const [artists, setArtists] = useState([])
+  const [featuredArtists, setFeaturedArtists] = useState([])
   const [categories, setCategories] = useState([])
   const [featuredSong, setFeaturedSong] = useState(null)
   const [stats, setStats] = useState({ songs: 0, artists: 0, users: 0 })
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [hoveredSong, setHoveredSong] = useState(null)
+  const [hoveredArtist, setHoveredArtist] = useState(null)
 
   useEffect(() => {
     const fetchData = async () => {
@@ -51,7 +53,7 @@ const Home = () => {
         
         let trendingData = []
         let newReleasesData = []
-        let artistsData = []
+        let featuredArtistsData = []
         let catsData = []
         let errors = []
 
@@ -72,11 +74,11 @@ const Home = () => {
         }
 
         try {
-          const artistsRes = await api.get('/api/v1/artists?limit=8')
-          artistsData = Array.isArray(artistsRes.data) ? artistsRes.data : []
+          const featuredRes = await artistsApi.getFeaturedArtists(12)
+          featuredArtistsData = Array.isArray(featuredRes.data) ? featuredRes.data : []
         } catch (e) {
-          console.error('Artists fetch failed:', e.message)
-          errors.push('artists')
+          console.error('Featured artists fetch failed:', e.message)
+          errors.push('featuredArtists')
         }
 
         try {
@@ -90,12 +92,12 @@ const Home = () => {
         setTrending(trendingData)
         setNewReleases(newReleasesData)
         setFeaturedSong(trendingData[0] || newReleasesData[0] || null)
-        setArtists(artistsData)
+        setFeaturedArtists(featuredArtistsData)
         setCategories(catsData.slice(0, 6))
         setStats({
           songs: (trendingData.length + newReleasesData.length),
-          artists: artistsData.length,
-          users: artistsData.reduce((acc, a) => acc + (a.followers_count || 0), 0)
+          artists: featuredArtistsData.length,
+          users: featuredArtistsData.reduce((acc, a) => acc + (a.followers_count || 0), 0)
         })
 
         if (errors.length >= 3) {
@@ -111,7 +113,6 @@ const Home = () => {
     fetchData()
   }, [])
 
-  // FIX: Pass the full list so queue has all songs for next/previous
   const handlePlayTrending = (song) => {
     if (player?.playSong) {
       player.playSong(song, trending)
@@ -312,7 +313,7 @@ const Home = () => {
         )}
       </section>
 
-      {/* FEATURED ARTISTS */}
+      {/* FEATURED ARTISTS — NOW WORKS EXACTLY LIKE TRENDING NOW */}
       <section className="px-4 md:px-8 py-4">
         <div className="flex items-end justify-between mb-4">
           <div className="flex items-center gap-2">
@@ -324,29 +325,50 @@ const Home = () => {
           </button>
         </div>
 
-        {artists.length === 0 ? (
-          <div className="text-center py-8 text-gray-500 text-sm">No artists yet</div>
+        {featuredArtists.length === 0 ? (
+          <div className="text-center py-8 text-gray-500 text-sm">No featured artists yet</div>
         ) : (
-          <div className="grid grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-3">
-            {artists.map((artist, i) => (
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-3">
+            {featuredArtists.map((artist, i) => (
               <motion.div
                 key={artist.id}
-                initial={{ opacity: 0, scale: 0.9 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ delay: i * 0.04 }}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: i * 0.05 }}
+                onMouseEnter={() => setHoveredArtist(artist.id)}
+                onMouseLeave={() => setHoveredArtist(null)}
                 onClick={() => navigate(`/artist/${artist.id}`)}
-                className="group text-center cursor-pointer"
+                className="group cursor-pointer"
               >
-                <div className="relative w-full aspect-square rounded-xl overflow-hidden mb-2 ring-2 ring-transparent group-hover:ring-primary/40 transition-all">
+                <div className="relative aspect-square rounded-xl overflow-hidden mb-2">
                   <img 
                     src={getImageUrl(artist.image_url)} 
                     alt={artist.stage_name} 
                     className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
                     onError={(e) => { e.target.src = '/default-avatar.jpg' }}
                   />
+                  <AnimatePresence>
+                    {hoveredArtist === artist.id && (
+                      <motion.div 
+                        initial={{ opacity: 0 }} 
+                        animate={{ opacity: 1 }} 
+                        exit={{ opacity: 0 }} 
+                        className="absolute inset-0 bg-black/50 flex items-center justify-center backdrop-blur-sm"
+                      >
+                        <div className="w-10 h-10 bg-secondary rounded-full flex items-center justify-center">
+                          <Eye className="w-4 h-4 text-white" />
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                  {artist.is_verified && (
+                    <div className="absolute top-1.5 left-1.5 w-6 h-6 bg-blue-500/90 backdrop-blur-sm rounded-full flex items-center justify-center">
+                      <Award className="w-3.5 h-3.5 text-white" />
+                    </div>
+                  )}
                 </div>
-                <h3 className="font-semibold text-xs truncate group-hover:text-primary transition-colors">{artist.stage_name}</h3>
-                <p className="text-[10px] text-gray-500">{(artist.followers_count ?? 0).toLocaleString()}</p>
+                <h3 className="font-semibold text-sm truncate group-hover:text-secondary transition-colors">{artist.stage_name}</h3>
+                <p className="text-xs text-gray-500 truncate">{(artist.followers_count ?? 0).toLocaleString()} followers</p>
               </motion.div>
             ))}
           </div>

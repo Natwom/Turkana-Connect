@@ -20,6 +20,23 @@ def list_artists(skip: int = 0, limit: int = 20, db: Session = Depends(get_db)):
         print(traceback.format_exc())
         raise HTTPException(status_code=500, detail=f"Server error: {str(e)}")
 
+@router.get("/featured", response_model=List[schemas.ArtistResponse])
+def get_featured_artists(limit: int = 12, db: Session = Depends(get_db)):
+    """Get featured artists: verified first, then by followers and streams"""
+    try:
+        return db.query(models.Artist).filter(
+            models.Artist.is_approved == True
+        ).order_by(
+            desc(models.Artist.is_verified),
+            desc(models.Artist.followers_count),
+            desc(models.Artist.total_streams)
+        ).limit(limit).all()
+    except Exception as e:
+        import traceback
+        print(f"ERROR in get_featured_artists: {e}")
+        print(traceback.format_exc())
+        raise HTTPException(status_code=500, detail=f"Server error: {str(e)}")
+
 @router.post("/", response_model=schemas.ArtistResponse, status_code=201)
 async def create_artist(
     stage_name: str = Form(...),
@@ -82,7 +99,7 @@ async def create_artist(
         db.rollback()
         raise HTTPException(500, f"Failed to create artist: {str(e)}")
 
-# ============ NEW: ARTIST OWN PROFILE / DASHBOARD ============
+# ============ ARTIST OWN PROFILE / DASHBOARD ============
 
 @router.get("/me", response_model=schemas.ArtistDashboard)
 def get_my_artist_profile(
