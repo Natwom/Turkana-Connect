@@ -109,6 +109,7 @@ class SongCreate(SongBase):
 class SongResponse(SongBase):
     id: int
     artist_id: Optional[int] = None
+    artist_name: Optional[str] = None  # <-- NEW: flat artist name field
     album_id: Optional[int] = None
     category_id: Optional[int] = None
     audio_url: Optional[str] = None

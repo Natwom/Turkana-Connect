@@ -16,7 +16,6 @@ const getImageUrl = (path) => {
   return `${baseUrl}${path}`
 }
 
-// Static data for Quick Access - defined OUTSIDE component to prevent re-renders
 const QUICK_ACCESS_ITEMS = [
   { icon: Radio, label: 'Live Radio', color: 'text-red-400', bg: 'bg-red-500/10', desc: 'Streaming now' },
   { icon: TrendingUp, label: 'Top 50', color: 'text-primary', bg: 'bg-primary/10', desc: 'This week' },
@@ -28,7 +27,6 @@ const Home = () => {
   const navigate = useNavigate()
   const player = usePlayer() || {}
   
-  // FIX: Separate ref for hero section only, not the whole page
   const heroRef = useRef(null)
   const { scrollYProgress } = useScroll({ target: heroRef })
   const heroY = useTransform(scrollYProgress, [0, 0.3], [0, -50])
@@ -107,6 +105,12 @@ const Home = () => {
     if (player?.playSong) player.playSong(song)
   }
 
+  // FIX: Helper to get artist name from song (checks artist_name first, then artist?.stage_name)
+  const getArtistName = (song) => {
+    if (!song) return 'Unknown Artist'
+    return song.artist_name || song.artist?.stage_name || 'Unknown Artist'
+  }
+
   if (loading) {
     return (
       <div className="flex flex-col items-center justify-center h-screen gap-4">
@@ -132,7 +136,7 @@ const Home = () => {
   return (
     <div className="space-y-0 pb-10">
       
-      {/* TOP BAR - Live Now / Quick Stats */}
+      {/* TOP BAR */}
       <div className="px-4 md:px-8 pt-4 pb-2">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
@@ -149,8 +153,7 @@ const Home = () => {
         </div>
       </div>
 
-      {/* HERO SECTION - Compact */}
-      {/* FIX: Attach ref to hero section only, not the whole page */}
+      {/* HERO SECTION */}
       <motion.section 
         ref={heroRef}
         style={{ y: heroY, opacity: heroOpacity }}
@@ -185,7 +188,8 @@ const Home = () => {
               <span className="flex items-center gap-1 text-yellow-400 text-xs"><Flame className="w-3 h-3" /> Trending</span>
             </div>
             <h1 className="text-2xl md:text-4xl font-bold mb-1 truncate">{featuredSong?.title || 'Discover Apiaro Music'}</h1>
-            <p className="text-gray-400 text-sm mb-3">{featuredSong?.artist?.stage_name || 'Various Artists'}</p>
+            {/* FIX: Use getArtistName helper */}
+            <p className="text-gray-400 text-sm mb-3">{getArtistName(featuredSong)}</p>
             <div className="flex items-center gap-3">
               <button onClick={() => handlePlaySong(featuredSong)} className="flex items-center gap-2 px-5 py-2.5 bg-primary hover:bg-primary/90 rounded-xl font-semibold text-sm transition-all hover:scale-105">
                 <Play className="w-4 h-4 fill-current" /> Play Now
@@ -205,7 +209,6 @@ const Home = () => {
       </motion.section>
 
       {/* QUICK ACCESS ROW */}
-      {/* FIX: Use regular div instead of motion.section, and static key to prevent re-animation */}
       <section className="px-4 md:px-8 py-4">
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           {QUICK_ACCESS_ITEMS.map((item, i) => (
@@ -214,7 +217,6 @@ const Home = () => {
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: i * 0.05, duration: 0.4 }}
-              // FIX: Remove whileHover/whileTap if they cause issues, or keep them simple
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
               onClick={() => navigate('/search')}
@@ -280,7 +282,8 @@ const Home = () => {
                   </div>
                 </div>
                 <h3 className="font-semibold text-sm truncate group-hover:text-primary transition-colors">{song.title}</h3>
-                <p className="text-xs text-gray-500 truncate">{song.artist?.stage_name || 'Unknown'}</p>
+                {/* FIX: Use getArtistName helper */}
+                <p className="text-xs text-gray-500 truncate">{getArtistName(song)}</p>
               </motion.div>
             ))}
           </div>
@@ -366,7 +369,8 @@ const Home = () => {
                 </div>
                 <div className="flex-1 min-w-0">
                   <h3 className="font-semibold text-sm truncate group-hover:text-primary transition-colors">{song.title}</h3>
-                  <p className="text-xs text-gray-500 truncate">{song.artist?.stage_name || 'Unknown'}</p>
+                  {/* FIX: Use getArtistName helper */}
+                  <p className="text-xs text-gray-500 truncate">{getArtistName(song)}</p>
                 </div>
                 <span className="text-xs text-gray-600 font-medium">{song.duration ? `${Math.floor(song.duration / 60)}:${(song.duration % 60).toString().padStart(2, '0')}` : '3:45'}</span>
               </motion.div>
@@ -445,7 +449,6 @@ const Home = () => {
             </div>
           </div>
 
-          {/* Stats Row */}
           <div className="relative z-10 grid grid-cols-3 gap-4 mt-6 pt-6 border-t border-white/10">
             {[
               { label: 'Songs', value: stats.songs, icon: Music },

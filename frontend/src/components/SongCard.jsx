@@ -13,52 +13,32 @@ const SongCard = ({ song, index = 0 }) => {
   const [isLiked, setIsLiked] = useState(false)
   const [isLikeLoading, setIsLikeLoading] = useState(false)
 
-  // Check if this song is already liked when component mounts
   useEffect(() => {
     if (!isAuthenticated || !song?.id) return
-    
     const checkLikeStatus = async () => {
       try {
         const res = await likesApi.checkLike(song.id)
         setIsLiked(res.data.liked)
-      } catch (err) {
-        // Silently fail — not critical for UI
-      }
+      } catch (err) {}
     }
-    
     checkLikeStatus()
   }, [song?.id, isAuthenticated])
 
   const handleLikeToggle = async (e) => {
-    e.stopPropagation() // Don't play the song when clicking the heart
-    
-    if (!isAuthenticated) {
-      window.location.href = '/login'
-      return
-    }
-    
+    e.stopPropagation()
+    if (!isAuthenticated) { window.location.href = '/login'; return }
     if (isLikeLoading) return
     setIsLikeLoading(true)
-    
     try {
-      if (isLiked) {
-        await likesApi.unlikeSong(song.id)
-        setIsLiked(false)
-      } else {
-        await likesApi.likeSong(song.id)
-        setIsLiked(true)
-      }
+      if (isLiked) { await likesApi.unlikeSong(song.id); setIsLiked(false) }
+      else { await likesApi.likeSong(song.id); setIsLiked(true) }
     } catch (err) {
-      console.error('Like toggle failed:', err)
-      // Re-sync state in case of conflict
-      try {
-        const res = await likesApi.checkLike(song.id)
-        setIsLiked(res.data.liked)
-      } catch (_) {}
-    } finally {
-      setIsLikeLoading(false)
-    }
+      try { const res = await likesApi.checkLike(song.id); setIsLiked(res.data.liked) } catch (_) {}
+    } finally { setIsLikeLoading(false) }
   }
+
+  // FIX: Use artist_name from backend, fallback to artist?.stage_name, then 'Unknown Artist'
+  const artistDisplay = song.artist_name || song.artist?.stage_name || 'Unknown Artist'
 
   return (
     <motion.div
@@ -92,7 +72,8 @@ const SongCard = ({ song, index = 0 }) => {
       <h3 className="font-semibold text-sm truncate mb-1 group-hover:text-primary transition-colors">
         {song.title}
       </h3>
-      <p className="text-xs text-gray-400 truncate">{song.artist?.stage_name}</p>
+      {/* FIX: Use artistDisplay which checks artist_name first */}
+      <p className="text-xs text-gray-400 truncate">{artistDisplay}</p>
       
       <div className="flex items-center justify-between mt-3 opacity-0 group-hover:opacity-100 transition-opacity">
         <button 
@@ -102,9 +83,7 @@ const SongCard = ({ song, index = 0 }) => {
         >
           <Heart 
             className={`w-4 h-4 transition-colors ${
-              isLiked 
-                ? 'text-red-500 fill-red-500' 
-                : 'text-gray-400 hover:text-red-400'
+              isLiked ? 'text-red-500 fill-red-500' : 'text-gray-400 hover:text-red-400'
             }`} 
           />
         </button>

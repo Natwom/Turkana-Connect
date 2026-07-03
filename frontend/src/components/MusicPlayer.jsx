@@ -41,15 +41,12 @@ const MusicPlayer = () => {
   const [isLikeLoading, setIsLikeLoading] = useState(false)
   const audioRef = useRef(null)
 
-  // Apply settings: volume from settings on mount
   useEffect(() => {
     if (settings.normalize_volume) {
-      // Normalize: start at 70% to prevent jumps
       setVolume(0.7)
     }
   }, [settings.normalize_volume])
 
-  // Apply settings: autoplay when song ends
   const handleEnded = () => {
     if (settings.autoplay) {
       playNext?.()
@@ -58,13 +55,11 @@ const MusicPlayer = () => {
     }
   }
 
-  // Check like status when current song changes
   useEffect(() => {
     if (!isAuthenticated || !currentSong?.id) {
       setIsLiked(false)
       return
     }
-    
     const checkLikeStatus = async () => {
       try {
         const res = await likesApi.checkLike(currentSong.id)
@@ -73,7 +68,6 @@ const MusicPlayer = () => {
         setIsLiked(false)
       }
     }
-    
     checkLikeStatus()
   }, [currentSong?.id, isAuthenticated])
 
@@ -194,7 +188,10 @@ const MusicPlayer = () => {
           />
           <div className="min-w-0">
             <h4 className="font-semibold text-sm truncate">{currentSong.title}</h4>
-            <p className="text-xs text-gray-400 truncate">{currentSong.artist?.stage_name}</p>
+            {/* FIX: Use artist_name first, then artist?.stage_name, then fallback */}
+            <p className="text-xs text-gray-400 truncate">
+              {currentSong.artist_name || currentSong.artist?.stage_name || 'Unknown Artist'}
+            </p>
             {audioError && (
               <p className="text-xs text-red-400">Failed to load audio</p>
             )}
