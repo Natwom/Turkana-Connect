@@ -2,6 +2,7 @@ import { useEffect, useState, useRef } from 'react'
 import { motion, useScroll, useTransform, AnimatePresence } from 'framer-motion'
 import { useNavigate } from 'react-router-dom'
 import api from '../api/axios'
+import songsApi from '../api/songs'
 import { usePlayer } from '../hooks/usePlayer'
 import { 
   TrendingUp, Disc, Users, Sparkles, Play, ChevronRight, 
@@ -48,17 +49,27 @@ const Home = () => {
         setLoading(true)
         setError(null)
         
-        let songsData = []
+        let trendingData = []
+        let newReleasesData = []
         let artistsData = []
         let catsData = []
         let errors = []
 
+        // FIX: Fetch trending and new releases as SEPARATE API calls with proper sorting
         try {
-          const songsRes = await api.get('/api/v1/songs?limit=12')
-          songsData = Array.isArray(songsRes.data) ? songsRes.data : []
+          const trendingRes = await songsApi.getTrendingSongs(6)
+          trendingData = Array.isArray(trendingRes.data) ? trendingRes.data : []
         } catch (e) {
-          console.error('Songs fetch failed:', e.message)
-          errors.push('songs')
+          console.error('Trending fetch failed:', e.message)
+          errors.push('trending')
+        }
+
+        try {
+          const newReleasesRes = await songsApi.getNewReleases(6)
+          newReleasesData = Array.isArray(newReleasesRes.data) ? newReleasesRes.data : []
+        } catch (e) {
+          console.error('New releases fetch failed:', e.message)
+          errors.push('newReleases')
         }
 
         try {
@@ -77,18 +88,21 @@ const Home = () => {
           errors.push('categories')
         }
 
-        setTrending(songsData.slice(0, 6))
-        setNewReleases(songsData.slice(6, 12))
-        setFeaturedSong(songsData[0] || null)
+        // FIX: Set trending from trending API (sorted by play_count desc)
+        setTrending(trendingData)
+        // FIX: Set new releases from new releases API (sorted by created_at desc)
+        setNewReleases(newReleasesData)
+        // FIX: Featured song = top trending song (most played)
+        setFeaturedSong(trendingData[0] || newReleasesData[0] || null)
         setArtists(artistsData)
         setCategories(catsData.slice(0, 6))
         setStats({
-          songs: songsData.length,
+          songs: (trendingData.length + newReleasesData.length),
           artists: artistsData.length,
           users: artistsData.reduce((acc, a) => acc + (a.followers_count || 0), 0)
         })
 
-        if (errors.length === 3) {
+        if (errors.length >= 3) {
           setError('Unable to load content. Please try again.')
         }
       } catch (err) {
@@ -105,7 +119,6 @@ const Home = () => {
     if (player?.playSong) player.playSong(song)
   }
 
-  // FIX: Helper to get artist name from song (checks artist_name first, then artist?.stage_name)
   const getArtistName = (song) => {
     if (!song) return 'Unknown Artist'
     return song.artist_name || song.artist?.stage_name || 'Unknown Artist'
@@ -188,7 +201,6 @@ const Home = () => {
               <span className="flex items-center gap-1 text-yellow-400 text-xs"><Flame className="w-3 h-3" /> Trending</span>
             </div>
             <h1 className="text-2xl md:text-4xl font-bold mb-1 truncate">{featuredSong?.title || 'Discover Apiaro Music'}</h1>
-            {/* FIX: Use getArtistName helper */}
             <p className="text-gray-400 text-sm mb-3">{getArtistName(featuredSong)}</p>
             <div className="flex items-center gap-3">
               <button onClick={() => handlePlaySong(featuredSong)} className="flex items-center gap-2 px-5 py-2.5 bg-primary hover:bg-primary/90 rounded-xl font-semibold text-sm transition-all hover:scale-105">
@@ -282,7 +294,6 @@ const Home = () => {
                   </div>
                 </div>
                 <h3 className="font-semibold text-sm truncate group-hover:text-primary transition-colors">{song.title}</h3>
-                {/* FIX: Use getArtistName helper */}
                 <p className="text-xs text-gray-500 truncate">{getArtistName(song)}</p>
               </motion.div>
             ))}
@@ -369,7 +380,6 @@ const Home = () => {
                 </div>
                 <div className="flex-1 min-w-0">
                   <h3 className="font-semibold text-sm truncate group-hover:text-primary transition-colors">{song.title}</h3>
-                  {/* FIX: Use getArtistName helper */}
                   <p className="text-xs text-gray-500 truncate">{getArtistName(song)}</p>
                 </div>
                 <span className="text-xs text-gray-600 font-medium">{song.duration ? `${Math.floor(song.duration / 60)}:${(song.duration % 60).toString().padStart(2, '0')}` : '3:45'}</span>

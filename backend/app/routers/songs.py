@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends, UploadFile, File, Form, Query, HTTPException
 from sqlalchemy.orm import Session, joinedload
+from sqlalchemy import desc
 from typing import Optional, List
 from app.database import get_db
 from app import models, schemas, auth
@@ -33,18 +34,36 @@ def _song_to_response(song: models.Song) -> schemas.SongResponse:
 def list_songs(
     skip: int = 0,
     limit: int = 20,
+    sort: Optional[str] = Query(None, description="Sort by: 'trending' (play_count desc), 'newest' (created_at desc), 'likes' (likes_count desc)"),
     category: Optional[str] = None,
     approved_only: bool = True,
     db: Session = Depends(get_db)
 ):
+    """
+    List songs with optional sorting:
+    - sort=trending: Most played songs first
+    - sort=newest: Newest uploaded songs first
+    - sort=likes: Most liked songs first
+    - no sort: Default to newest
+    """
     try:
         query = db.query(models.Song).options(joinedload(models.Song.artist))
+        
         if approved_only:
             query = query.filter(models.Song.is_approved == True)
         if category:
             query = query.join(models.Category).filter(models.Category.slug == category)
         
-        songs = query.order_by(models.Song.created_at.desc()).offset(skip).limit(limit).all()
+        # Apply sorting
+        if sort == "trending":
+            query = query.order_by(desc(models.Song.play_count), desc(models.Song.created_at))
+        elif sort == "likes":
+            query = query.order_by(desc(models.Song.likes_count), desc(models.Song.created_at))
+        else:
+            # Default: newest first
+            query = query.order_by(desc(models.Song.created_at))
+        
+        songs = query.offset(skip).limit(limit).all()
         return [_song_to_response(song) for song in songs]
     except Exception as e:
         import traceback
