@@ -13,7 +13,8 @@ import {
   Play,
   Heart,
   Filter,
-  ArrowLeft
+  ArrowLeft,
+  Compass
 } from 'lucide-react'
 import { searchApi } from '../api'
 import songsApi from '../api/songs'
@@ -30,6 +31,7 @@ const Search = () => {
   const [recentSearches, setRecentSearches] = useState([])
   const [isSearchFocused, setIsSearchFocused] = useState(false)
   const [showFilters, setShowFilters] = useState(false)
+  const [isBrowseMode, setIsBrowseMode] = useState(false)
   const { playSong } = usePlayer()
   const inputRef = useRef(null)
 
@@ -46,11 +48,19 @@ const Search = () => {
       // Handle sort-only navigation (from "See All" buttons)
       setSort(s)
       setQuery('')
+      setIsBrowseMode(false)
       fetchSortedSongs(s)
     } else if (q) {
       setQuery(q)
       setSort('')
+      setIsBrowseMode(false)
       performSearch(q)
+    } else {
+      // No query, no sort — show browse mode (all songs)
+      setQuery('')
+      setSort('')
+      setIsBrowseMode(true)
+      fetchAllSongs()
     }
   }, [searchParams])
 
@@ -90,6 +100,27 @@ const Search = () => {
       setActiveTab('songs')
     } catch (err) {
       console.error('Sorted fetch failed:', err)
+      setResults({ songs: [], artists: [], albums: [], playlists: [] })
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  // NEW: Fetch all songs for browse mode
+  const fetchAllSongs = async () => {
+    setLoading(true)
+    try {
+      const res = await songsApi.getSongs({ limit: 50 })
+      const songs = Array.isArray(res.data) ? res.data : []
+      setResults({
+        songs: songs,
+        artists: [],
+        albums: [],
+        playlists: []
+      })
+      setActiveTab('songs')
+    } catch (err) {
+      console.error('Browse fetch failed:', err)
       setResults({ songs: [], artists: [], albums: [], playlists: [] })
     } finally {
       setLoading(false)
@@ -140,7 +171,6 @@ const Search = () => {
 
   const totalResults = results.songs.length + results.artists.length + results.albums.length + results.playlists.length
 
-  // Updated trending searches: some are text searches, some are sort filters
   const trendingSearches = [
     { label: 'Afrobeats', type: 'search' },
     { label: 'Turkana Hits', type: 'search' },
@@ -150,9 +180,8 @@ const Search = () => {
     { label: 'Gospel', type: 'search' },
   ]
 
-  // When in sort mode (trending/newest), force songs tab
   const isSortMode = !!sort
-  const displayTabs = isSortMode 
+  const displayTabs = isSortMode || isBrowseMode
     ? [{ id: 'songs', label: 'Songs', icon: Music, count: 'songs' }]
     : tabs
 
@@ -166,7 +195,7 @@ const Search = () => {
         <div className="absolute inset-0 bg-gradient-to-b from-violet-900/20 to-transparent h-64 pointer-events-none" />
         
         <div className="relative pt-8 pb-6 px-4">
-          {/* FIX: Show back button and sort title when in sort mode */}
+          {/* Sort mode header */}
           {isSortMode && (
             <motion.div 
               initial={{ opacity: 0, x: -20 }}
@@ -188,7 +217,25 @@ const Search = () => {
             </motion.div>
           )}
 
-          {!isSortMode && (
+          {/* Browse mode header */}
+          {isBrowseMode && !isSortMode && (
+            <motion.div 
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              className="flex items-center gap-3 mb-4"
+            >
+              <div className="w-10 h-10 rounded-xl bg-violet-500/10 flex items-center justify-center">
+                <Compass className="w-5 h-5 text-violet-400" />
+              </div>
+              <div>
+                <h1 className="text-2xl font-bold">Browse All Music</h1>
+                <p className="text-sm text-gray-400">{results.songs.length} songs available</p>
+              </div>
+            </motion.div>
+          )}
+
+          {/* Normal search header */}
+          {!isSortMode && !isBrowseMode && (
             <>
               <motion.h1 
                 initial={{ opacity: 0, y: 10 }}
@@ -212,7 +259,7 @@ const Search = () => {
             </>
           )}
 
-          {/* Search bar - hidden in sort mode, shown otherwise */}
+          {/* Search bar - hidden in sort mode, shown in browse and search */}
           {!isSortMode && (
             <form onSubmit={handleSubmit} className="max-w-2xl relative">
               <motion.div 
@@ -303,7 +350,8 @@ const Search = () => {
             </form>
           )}
 
-          {!query && !isSortMode && (
+          {/* Trending searches - only show in empty search mode (not browse, not sort) */}
+          {!query && !isSortMode && !isBrowseMode && (
             <motion.div 
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
@@ -384,7 +432,7 @@ const Search = () => {
                 ))}
               </div>
               
-              {!isSortMode && (
+              {!isSortMode && !isBrowseMode && (
                 <button 
                   onClick={() => setShowFilters(!showFilters)}
                   className={`p-2.5 rounded-xl border transition-all duration-200 ${
@@ -458,7 +506,7 @@ const Search = () => {
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -20 }}
                 >
-                  {!isSortMode && (
+                  {!isSortMode && !isBrowseMode && (
                     <div className="flex items-center justify-between mb-5">
                       <h2 className="text-xl font-bold flex items-center gap-2">
                         <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-violet-500 to-fuchsia-500 flex items-center justify-center">
@@ -469,11 +517,7 @@ const Search = () => {
                       </h2>
                     </div>
                   )}
-                  <div className={`grid gap-4 ${
-                    isSortMode 
-                      ? 'grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5' 
-                      : 'grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5'
-                  }`}>
+                  <div className="grid gap-4 grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
                     {results.songs.map((song, i) => (
                       <motion.div
                         key={song.id}
@@ -489,8 +533,8 @@ const Search = () => {
               )}
             </AnimatePresence>
 
-            {/* Only show artists/albums/playlists when NOT in sort mode */}
-            {!isSortMode && (
+            {/* Only show artists/albums/playlists when NOT in sort/browse mode */}
+            {!isSortMode && !isBrowseMode && (
               <>
                 <AnimatePresence>
                   {(activeTab === 'all' || activeTab === 'artists') && results.artists.length > 0 && (
