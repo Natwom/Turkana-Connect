@@ -69,35 +69,43 @@ const Home = () => {
         let catsData = []
         let errors = []
 
+        // Fetch trending songs
         try {
           const trendingRes = await songsApi.getTrendingSongs(12)
+          console.log('Trending response:', trendingRes.data)
           trendingData = Array.isArray(trendingRes.data) ? trendingRes.data : []
         } catch (e) {
-          console.error('Trending fetch failed:', e.message)
+          console.error('Trending fetch failed:', e.message, e.response?.status, e.response?.data)
           errors.push('trending')
         }
 
+        // Fetch new releases
         try {
           const newReleasesRes = await songsApi.getNewReleases(12)
+          console.log('New releases response:', newReleasesRes.data)
           newReleasesData = Array.isArray(newReleasesRes.data) ? newReleasesRes.data : []
         } catch (e) {
-          console.error('New releases fetch failed:', e.message)
+          console.error('New releases fetch failed:', e.message, e.response?.status, e.response?.data)
           errors.push('newReleases')
         }
 
+        // Fetch featured artists
         try {
           const featuredRes = await artistsApi.getFeaturedArtists(12)
+          console.log('Featured artists response:', featuredRes.data)
           featuredArtistsData = Array.isArray(featuredRes.data) ? featuredRes.data : []
         } catch (e) {
-          console.error('Featured artists fetch failed:', e.message)
+          console.error('Featured artists fetch failed:', e.message, e.response?.status, e.response?.data)
           errors.push('featuredArtists')
         }
 
+        // Fetch categories
         try {
           const catsRes = await api.get('/api/v1/categories')
+          console.log('Categories response:', catsRes.data)
           catsData = Array.isArray(catsRes.data) ? catsRes.data : []
         } catch (e) {
-          console.error('Categories fetch failed:', e.message)
+          console.error('Categories fetch failed:', e.message, e.response?.status, e.response?.data)
           errors.push('categories')
         }
 
@@ -138,16 +146,19 @@ const Home = () => {
           return
         }
         const res = await api.get('/api/v1/users/me/history?limit=8')
+        console.log('Recent plays response:', res.data)
         setModalData(Array.isArray(res.data) ? res.data : [])
       } else if (type === 'fresh') {
         const res = await songsApi.getNewReleases(8)
+        console.log('Fresh drops response:', res.data)
         setModalData(Array.isArray(res.data) ? res.data : [])
       } else if (type === 'artists') {
         const res = await artistsApi.getFeaturedArtists(8)
+        console.log('Top artists response:', res.data)
         setModalData(Array.isArray(res.data) ? res.data : [])
       }
     } catch (err) {
-      console.error('Modal fetch failed:', err)
+      console.error('Modal fetch failed:', err.message, err.response?.status, err.response?.data)
       setModalData([])
     } finally {
       setModalLoading(false)
