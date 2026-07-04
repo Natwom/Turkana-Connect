@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, UploadFile, File, Form, HTTPException
 from sqlalchemy.orm import Session
-from sqlalchemy import func, desc
+from sqlalchemy import func, desc, or_
 from typing import Optional, List
 from datetime import datetime, timedelta
 from app.database import get_db
@@ -16,6 +16,7 @@ def list_songs(
     limit: int = 20,
     sort: Optional[str] = None,
     category_id: Optional[int] = None,
+    category: Optional[str] = None,
     artist_id: Optional[int] = None,
     search: Optional[str] = None,
     db: Session = Depends(get_db)
@@ -24,16 +25,32 @@ def list_songs(
     
     if category_id:
         query = query.filter(models.Song.category_id == category_id)
+    
+    if category:
+        query = query.join(models.Category).filter(
+            or_(
+                models.Category.name.ilike(f"%{category}%"),
+                models.Category.slug.ilike(f"%{category}%")
+            )
+        )
+    
     if artist_id:
         query = query.filter(models.Song.artist_id == artist_id)
     if search:
-        query = query.filter(models.Song.title.ilike(f"%{search}%"))
+        query = query.filter(
+            or_(
+                models.Song.title.ilike(f"%{search}%"),
+                models.Song.lyrics.ilike(f"%{search}%")
+            )
+        )
     
     # Sorting
     if sort == "trending":
         query = query.order_by(desc(models.Song.play_count), desc(models.Song.likes_count))
     elif sort == "newest":
         query = query.order_by(desc(models.Song.created_at))
+    elif sort == "likes":
+        query = query.order_by(desc(models.Song.likes_count))
     else:
         query = query.order_by(desc(models.Song.created_at))
     

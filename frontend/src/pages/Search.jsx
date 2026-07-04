@@ -140,7 +140,15 @@ const Search = () => {
 
   const totalResults = results.songs.length + results.artists.length + results.albums.length + results.playlists.length
 
-  const trendingSearches = ['Afrobeats', 'Turkana Hits', 'New Releases', 'Top Charts', 'Hip Hop', 'Gospel']
+  // Updated trending searches: some are text searches, some are sort filters
+  const trendingSearches = [
+    { label: 'Afrobeats', type: 'search' },
+    { label: 'Turkana Hits', type: 'search' },
+    { label: 'New Releases', type: 'sort', sort: 'newest' },
+    { label: 'Top Charts', type: 'sort', sort: 'trending' },
+    { label: 'Hip Hop', type: 'search' },
+    { label: 'Gospel', type: 'search' },
+  ]
 
   // When in sort mode (trending/newest), force songs tab
   const isSortMode = !!sort
@@ -307,18 +315,26 @@ const Search = () => {
                 <span className="text-sm font-medium text-gray-400">Trending Now</span>
               </div>
               <div className="flex flex-wrap gap-2">
-                {trendingSearches.map((term, i) => (
+                {trendingSearches.map((item, i) => (
                   <motion.button
-                    key={term}
+                    key={item.label}
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.4 + i * 0.05 }}
-                    onClick={() => { setQuery(term); setSearchParams({ q: term }) }}
+                    onClick={() => {
+                      if (item.type === 'sort') {
+                        setSort(item.sort)
+                        setSearchParams({ sort: item.sort })
+                      } else {
+                        setQuery(item.label)
+                        setSearchParams({ q: item.label })
+                      }
+                    }}
                     whileHover={{ scale: 1.05 }}
                     whileTap={{ scale: 0.95 }}
                     className="px-4 py-2 bg-white/[0.05] hover:bg-gradient-to-r hover:from-violet-600/20 hover:to-fuchsia-600/20 border border-white/[0.08] hover:border-fuchsia-500/30 rounded-full text-sm text-gray-300 hover:text-white transition-all duration-200"
                   >
-                    {term}
+                    {item.label}
                   </motion.button>
                 ))}
               </div>
@@ -453,7 +469,6 @@ const Search = () => {
                       </h2>
                     </div>
                   )}
-                  {/* FIX: Show all songs in a grid when in sort mode (no limit) */}
                   <div className={`grid gap-4 ${
                     isSortMode 
                       ? 'grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5' 
