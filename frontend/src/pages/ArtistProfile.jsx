@@ -4,10 +4,10 @@ import { motion } from 'framer-motion'
 import { Play, Users, Heart, Share2, Loader2 } from 'lucide-react'
 import api from '../api/axios'
 import SongCard from '../components/SongCard'
+import SongCommentsModal from '../components/SongCommentsModal'
 import { usePlayer } from '../context/PlayerContext'
 import { useAuth } from '../context/AuthContext'
 
-// Helper: prepend backend URL to relative image paths
 const getImageUrl = (path) => {
   if (!path) return '/default-avatar.jpg'
   if (path.startsWith('http')) return path
@@ -23,6 +23,9 @@ const ArtistProfile = () => {
   const [isFollowing, setIsFollowing] = useState(false)
   const [followLoading, setFollowLoading] = useState(false)
   const [loading, setLoading] = useState(true)
+  
+  // Comment modal state
+  const [commentModalSong, setCommentModalSong] = useState(null)
 
   useEffect(() => {
     const fetchArtist = async () => {
@@ -62,6 +65,14 @@ const ArtistProfile = () => {
     } finally {
       setFollowLoading(false)
     }
+  }
+
+  const handleOpenComments = (song) => {
+    setCommentModalSong(song)
+  }
+
+  const handleCloseComments = () => {
+    setCommentModalSong(null)
   }
 
   if (loading) {
@@ -151,9 +162,12 @@ const ArtistProfile = () => {
           <h2 className="text-2xl font-bold mb-4">Popular Songs</h2>
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
             {artist.songs.map((song, i) => (
-              <div key={song.id} onClick={() => playSong(song)} className="cursor-pointer">
-                <SongCard song={song} index={i} />
-              </div>
+              <SongCard 
+                key={song.id} 
+                song={song} 
+                index={i} 
+                onOpenComments={handleOpenComments}
+              />
             ))}
           </div>
         </section>
@@ -186,6 +200,13 @@ const ArtistProfile = () => {
           </div>
         </section>
       )}
+
+      {/* Song Comments Modal */}
+      <SongCommentsModal 
+        song={commentModalSong}
+        isOpen={!!commentModalSong}
+        onClose={handleCloseComments}
+      />
     </div>
   )
 }

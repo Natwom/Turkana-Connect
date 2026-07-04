@@ -1,11 +1,11 @@
 import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
-import { Play, Heart } from 'lucide-react'
+import { Play, Heart, MessageCircle } from 'lucide-react'
 import { usePlayer } from '../context/PlayerContext'
 import { useAuth } from '../context/AuthContext'
 import likesApi from '../api/likes'
 
-const SongCard = ({ song, index = 0 }) => {
+const SongCard = ({ song, index = 0, onOpenComments }) => {
   const { playSong, currentSong, isPlaying } = usePlayer()
   const { isAuthenticated } = useAuth()
   const isCurrentSong = currentSong?.id === song.id
@@ -37,7 +37,13 @@ const SongCard = ({ song, index = 0 }) => {
     } finally { setIsLikeLoading(false) }
   }
 
-  // FIX: Use artist_name from backend, fallback to artist?.stage_name, then 'Unknown Artist'
+  const handleCommentClick = (e) => {
+    e.stopPropagation()
+    if (onOpenComments) {
+      onOpenComments(song)
+    }
+  }
+
   const artistDisplay = song.artist_name || song.artist?.stage_name || 'Unknown Artist'
 
   return (
@@ -72,21 +78,28 @@ const SongCard = ({ song, index = 0 }) => {
       <h3 className="font-semibold text-sm truncate mb-1 group-hover:text-primary transition-colors">
         {song.title}
       </h3>
-      {/* FIX: Use artistDisplay which checks artist_name first */}
       <p className="text-xs text-gray-400 truncate">{artistDisplay}</p>
       
       <div className="flex items-center justify-between mt-3 opacity-0 group-hover:opacity-100 transition-opacity">
-        <button 
-          onClick={handleLikeToggle}
-          disabled={isLikeLoading}
-          className="p-1.5 hover:bg-white/10 rounded-lg transition-colors disabled:opacity-50"
-        >
-          <Heart 
-            className={`w-4 h-4 transition-colors ${
-              isLiked ? 'text-red-500 fill-red-500' : 'text-gray-400 hover:text-red-400'
-            }`} 
-          />
-        </button>
+        <div className="flex items-center gap-1">
+          <button 
+            onClick={handleLikeToggle}
+            disabled={isLikeLoading}
+            className="p-1.5 hover:bg-white/10 rounded-lg transition-colors disabled:opacity-50"
+          >
+            <Heart 
+              className={`w-4 h-4 transition-colors ${
+                isLiked ? 'text-red-500 fill-red-500' : 'text-gray-400 hover:text-red-400'
+              }`} 
+            />
+          </button>
+          <button 
+            onClick={handleCommentClick}
+            className="p-1.5 hover:bg-white/10 rounded-lg transition-colors"
+          >
+            <MessageCircle className="w-4 h-4 text-gray-400 hover:text-violet-400 transition-colors" />
+          </button>
+        </div>
         <span className="text-xs text-gray-500">{song.play_count?.toLocaleString()} plays</span>
       </div>
     </motion.div>
