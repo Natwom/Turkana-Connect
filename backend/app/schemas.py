@@ -74,6 +74,8 @@ class CategoryResponse(CategoryBase):
     id: int
     image_url: Optional[str] = None
     is_active: bool = True
+    song_count: int = 0
+    artist_count: int = 0
 
 # ============ ALBUM SCHEMAS ============
 

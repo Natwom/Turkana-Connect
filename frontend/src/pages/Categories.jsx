@@ -1,106 +1,109 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useNavigate } from 'react-router-dom'
+import { categoriesApi } from '../api'
 import { 
   Disc, Music, Guitar, Church, Drum, Mic2, 
   Play, TrendingUp, Clock, ChevronRight, Headphones,
-  Radio, Star, ArrowUpRight
+  Radio, Star, ArrowUpRight, Loader2
 } from 'lucide-react'
 
-const categories = [
-  { 
-    name: 'Turkana', 
-    color: 'from-orange-500 to-red-600', 
-    bgColor: 'bg-orange-500/10',
-    borderColor: 'border-orange-500/20',
-    icon: Drum, 
-    description: 'Traditional Turkana rhythms and sounds',
-    songCount: 124,
-    artistCount: 18,
-    trending: ['Nakwam Ekile', 'Akolong'],
-    featured: true
-  },
-  { 
-    name: 'Kenyan', 
-    color: 'from-green-500 to-emerald-600', 
-    bgColor: 'bg-green-500/10',
-    borderColor: 'border-green-500/20',
+// Map category names to icons and colors (fallback for categories without color)
+const categoryMeta = {
+  'Turkana': { icon: Drum, color: 'from-orange-500 to-red-600', bgColor: 'bg-orange-500/10', borderColor: 'border-orange-500/20' },
+  'Kenyan': { icon: Music, color: 'from-green-500 to-emerald-600', bgColor: 'bg-green-500/10', borderColor: 'border-green-500/20' },
+  'Gospel': { icon: Church, color: 'from-blue-500 to-indigo-600', bgColor: 'bg-blue-500/10', borderColor: 'border-blue-500/20' },
+  'Traditional': { icon: Guitar, color: 'from-amber-500 to-yellow-600', bgColor: 'bg-amber-500/10', borderColor: 'border-amber-500/20' },
+  'Afrobeat': { icon: Mic2, color: 'from-purple-500 to-violet-600', bgColor: 'bg-purple-500/10', borderColor: 'border-purple-500/20' },
+  'Afrobeats': { icon: Mic2, color: 'from-purple-500 to-violet-600', bgColor: 'bg-purple-500/10', borderColor: 'border-purple-500/20' },
+  'Contemporary': { icon: Disc, color: 'from-pink-500 to-rose-600', bgColor: 'bg-pink-500/10', borderColor: 'border-pink-500/20' },
+  'Hip Hop': { icon: Mic2, color: 'from-cyan-500 to-blue-600', bgColor: 'bg-cyan-500/10', borderColor: 'border-cyan-500/20' },
+  'Reggae': { icon: Music, color: 'from-green-600 to-emerald-700', bgColor: 'bg-green-600/10', borderColor: 'border-green-600/20' },
+  'R&B': { icon: Disc, color: 'from-rose-500 to-pink-600', bgColor: 'bg-rose-500/10', borderColor: 'border-rose-500/20' },
+  'Pop': { icon: Music, color: 'from-violet-500 to-fuchsia-600', bgColor: 'bg-violet-500/10', borderColor: 'border-violet-500/20' },
+  'Rock': { icon: Guitar, color: 'from-red-500 to-orange-600', bgColor: 'bg-red-500/10', borderColor: 'border-red-500/20' },
+}
+
+const getCategoryMeta = (cat) => {
+  const name = cat.name
+  // Try exact match first
+  if (categoryMeta[name]) return categoryMeta[name]
+  // Try case-insensitive
+  const key = Object.keys(categoryMeta).find(k => k.toLowerCase() === name.toLowerCase())
+  if (key) return categoryMeta[key]
+  // Default fallback
+  return { 
     icon: Music, 
-    description: 'Best of Kenyan music across all genres',
-    songCount: 856,
-    artistCount: 142,
-    trending: ['Sauti Sol', 'Nyashinski'],
-    featured: true
-  },
-  { 
-    name: 'Gospel', 
-    color: 'from-blue-500 to-indigo-600', 
-    bgColor: 'bg-blue-500/10',
-    borderColor: 'border-blue-500/20',
-    icon: Church, 
-    description: 'Inspirational gospel and worship music',
-    songCount: 432,
-    artistCount: 67,
-    trending: ['Eunice Njeri', 'Guardian Angel'],
-    featured: false
-  },
-  { 
-    name: 'Traditional', 
-    color: 'from-amber-500 to-yellow-600', 
-    bgColor: 'bg-amber-500/10',
-    borderColor: 'border-amber-500/20',
-    icon: Guitar, 
-    description: 'Authentic African traditional music',
-    songCount: 289,
-    artistCount: 45,
-    trending: ['Benga Classics', 'Ohangla'],
-    featured: false
-  },
-  { 
-    name: 'Afrobeat', 
-    color: 'from-purple-500 to-violet-600', 
-    bgColor: 'bg-purple-500/10',
-    borderColor: 'border-purple-500/20',
-    icon: Mic2, 
-    description: 'Contemporary Afrobeat hits',
-    songCount: 567,
-    artistCount: 89,
-    trending: ['Burna Boy', 'Wizkid'],
-    featured: true
-  },
-  { 
-    name: 'Contemporary', 
-    color: 'from-pink-500 to-rose-600', 
-    bgColor: 'bg-pink-500/10',
-    borderColor: 'border-pink-500/20',
-    icon: Disc, 
-    description: 'Modern sounds and fresh releases',
-    songCount: 723,
-    artistCount: 112,
-    trending: ['Gengetone', 'Pop Hits'],
-    featured: false
-  },
-]
+    color: 'from-violet-500 to-fuchsia-600', 
+    bgColor: 'bg-violet-500/10', 
+    borderColor: 'border-violet-500/20' 
+  }
+}
 
 const Categories = () => {
   const navigate = useNavigate()
+  const [categories, setCategories] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
   const [hoveredCat, setHoveredCat] = useState(null)
   const [selectedFilter, setSelectedFilter] = useState('all')
 
+  useEffect(() => {
+    const fetchCategories = async () => {
+      try {
+        setLoading(true)
+        const res = await categoriesApi.getCategories()
+        const data = Array.isArray(res.data) ? res.data : []
+        setCategories(data)
+      } catch (err) {
+        console.error('Failed to fetch categories:', err)
+        setError('Failed to load categories')
+      } finally {
+        setLoading(false)
+      }
+    }
+    fetchCategories()
+  }, [])
+
   const filters = [
     { label: 'All', value: 'all', count: categories.length },
-    { label: 'Featured', value: 'featured', count: categories.filter(c => c.featured).length },
-    { label: 'Trending', value: 'trending', count: 4 },
+    { label: 'Popular', value: 'popular', count: categories.filter(c => (c.song_count || 0) > 50).length },
+    { label: 'Trending', value: 'trending', count: categories.filter(c => (c.song_count || 0) > 200).length },
   ]
 
   const filteredCategories = selectedFilter === 'all' 
     ? categories 
-    : selectedFilter === 'featured' 
-      ? categories.filter(c => c.featured)
-      : categories.filter(c => c.songCount > 400)
+    : selectedFilter === 'popular' 
+      ? categories.filter(c => (c.song_count || 0) > 50)
+      : categories.filter(c => (c.song_count || 0) > 200)
 
-  const totalSongs = categories.reduce((acc, c) => acc + c.songCount, 0)
-  const totalArtists = categories.reduce((acc, c) => acc + c.artistCount, 0)
+  const totalSongs = categories.reduce((acc, c) => acc + (c.song_count || 0), 0)
+  const totalArtists = categories.reduce((acc, c) => acc + (c.artist_count || 0), 0)
+
+  if (loading) {
+    return (
+      <div className="flex flex-col items-center justify-center h-screen gap-4">
+        <Loader2 className="w-10 h-10 text-primary animate-spin" />
+        <p className="text-gray-400 text-sm">Loading categories...</p>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="flex flex-col items-center justify-center h-screen gap-4 px-4">
+        <Headphones className="w-16 h-16 text-gray-600" />
+        <h2 className="text-xl font-bold text-gray-300">Something went wrong</h2>
+        <p className="text-gray-500 text-sm">{error}</p>
+        <button 
+          onClick={() => window.location.reload()} 
+          className="px-5 py-2.5 bg-primary hover:bg-primary/80 rounded-xl font-medium text-sm transition-all"
+        >
+          Try Again
+        </button>
+      </div>
+    )
+  }
 
   return (
     <div className="space-y-0 pb-10">
@@ -135,7 +138,7 @@ const Categories = () => {
               {[
                 { icon: Music, label: 'Songs', value: totalSongs },
                 { icon: Mic2, label: 'Artists', value: totalArtists },
-                { icon: Radio, label: 'Live Stations', value: 12 },
+                { icon: Radio, label: 'Categories', value: categories.length },
               ].map((stat) => (
                 <div key={stat.label} className="flex items-center gap-2">
                   <div className="w-8 h-8 bg-white/5 rounded-lg flex items-center justify-center">
@@ -176,138 +179,152 @@ const Categories = () => {
 
       {/* CATEGORIES GRID */}
       <div className="px-4 md:px-8 pb-6">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          <AnimatePresence mode="popLayout">
-            {filteredCategories.map((cat, i) => (
-              <motion.div
-                key={cat.name}
-                layout
-                initial={{ opacity: 0, scale: 0.9 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.9 }}
-                transition={{ delay: i * 0.05, type: 'spring', stiffness: 300 }}
-                onMouseEnter={() => setHoveredCat(cat.name)}
-                onMouseLeave={() => setHoveredCat(null)}
-                onClick={() => navigate(`/categories?genre=${encodeURIComponent(cat.name)}`)}
-                className={`group relative rounded-2xl overflow-hidden cursor-pointer border transition-all duration-300 ${
-                  hoveredCat === cat.name ? cat.borderColor : 'border-white/5'
-                }`}
-              >
-                {/* Background Gradient */}
-                <div className={`absolute inset-0 bg-gradient-to-br ${cat.color} opacity-0 group-hover:opacity-5 transition-opacity duration-500`} />
+        {categories.length === 0 ? (
+          <div className="text-center py-16">
+            <Disc className="w-12 h-12 text-gray-600 mx-auto mb-4" />
+            <h3 className="text-lg font-bold text-white mb-2">No categories yet</h3>
+            <p className="text-gray-500 text-sm">Categories will appear here once added.</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <AnimatePresence mode="popLayout">
+              {filteredCategories.map((cat, i) => {
+                const meta = getCategoryMeta(cat)
+                const Icon = meta.icon
                 
-                <div className="relative z-10 p-5">
-                  {/* Top Row */}
-                  <div className="flex items-start justify-between mb-4">
-                    <div className={`w-14 h-14 rounded-2xl bg-gradient-to-br ${cat.color} flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform duration-300`}>
-                      <cat.icon className="w-7 h-7 text-white" />
-                    </div>
+                return (
+                  <motion.div
+                    key={cat.id}
+                    layout
+                    initial={{ opacity: 0, scale: 0.9 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.9 }}
+                    transition={{ delay: i * 0.05, type: 'spring', stiffness: 300 }}
+                    onMouseEnter={() => setHoveredCat(cat.id)}
+                    onMouseLeave={() => setHoveredCat(null)}
+                    onClick={() => navigate(`/search?q=${encodeURIComponent(cat.name)}`)}
+                    className={`group relative rounded-2xl overflow-hidden cursor-pointer border transition-all duration-300 ${
+                      hoveredCat === cat.id ? meta.borderColor : 'border-white/5'
+                    }`}
+                  >
+                    {/* Background Gradient */}
+                    <div className={`absolute inset-0 bg-gradient-to-br ${meta.color} opacity-0 group-hover:opacity-5 transition-opacity duration-500`} />
                     
-                    <div className="flex items-center gap-2">
-                      {cat.featured && (
-                        <span className="px-2 py-1 bg-yellow-500/20 text-yellow-400 rounded-lg text-[10px] font-bold uppercase">
-                          Featured
-                        </span>
-                      )}
-                      <div className="w-8 h-8 bg-white/5 rounded-lg flex items-center justify-center group-hover:bg-white/10 transition-colors">
-                        <ArrowUpRight className="w-4 h-4 text-gray-500 group-hover:text-white transition-colors" />
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Title & Description */}
-                  <h3 className="text-xl font-bold mb-1 group-hover:text-primary transition-colors">{cat.name}</h3>
-                  <p className="text-sm text-gray-400 mb-4 line-clamp-2">{cat.description}</p>
-
-                  {/* Stats Row */}
-                  <div className="flex items-center gap-4 mb-4">
-                    <div className="flex items-center gap-1.5 text-xs text-gray-500">
-                      <Music className="w-3.5 h-3.5" />
-                      <span>{cat.songCount.toLocaleString()} songs</span>
-                    </div>
-                    <div className="flex items-center gap-1.5 text-xs text-gray-500">
-                      <Mic2 className="w-3.5 h-3.5" />
-                      <span>{cat.artistCount} artists</span>
-                    </div>
-                  </div>
-
-                  {/* Trending Tags */}
-                  <div className="flex items-center gap-2 mb-4">
-                    <TrendingUp className="w-3 h-3 text-gray-600" />
-                    {cat.trending.map((tag) => (
-                      <span key={tag} className="px-2 py-0.5 bg-white/5 rounded-md text-[10px] text-gray-400">
-                        {tag}
-                      </span>
-                    ))}
-                  </div>
-
-                  {/* Hover Action */}
-                  <div className="flex items-center justify-between pt-3 border-t border-white/5">
-                    <div className="flex items-center gap-2">
-                      <div className="flex -space-x-2">
-                        {[1,2,3].map((n) => (
-                          <div key={n} className={`w-6 h-6 rounded-full ${cat.bgColor} border-2 border-background flex items-center justify-center`}>
-                            <span className="text-[8px] font-bold">{n}</span>
+                    <div className="relative z-10 p-5">
+                      {/* Top Row */}
+                      <div className="flex items-start justify-between mb-4">
+                        <div className={`w-14 h-14 rounded-2xl bg-gradient-to-br ${meta.color} flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform duration-300`}>
+                          <Icon className="w-7 h-7 text-white" />
+                        </div>
+                        
+                        <div className="flex items-center gap-2">
+                          {(cat.song_count || 0) > 50 && (
+                            <span className="px-2 py-1 bg-yellow-500/20 text-yellow-400 rounded-lg text-[10px] font-bold uppercase">
+                              Popular
+                            </span>
+                          )}
+                          <div className="w-8 h-8 bg-white/5 rounded-lg flex items-center justify-center group-hover:bg-white/10 transition-colors">
+                            <ArrowUpRight className="w-4 h-4 text-gray-500 group-hover:text-white transition-colors" />
                           </div>
-                        ))}
+                        </div>
                       </div>
-                      <span className="text-[10px] text-gray-500">+{cat.artistCount - 3} more</span>
-                    </div>
-                    
-                    <motion.button
-                      initial={false}
-                      animate={{ opacity: hoveredCat === cat.name ? 1 : 0, x: hoveredCat === cat.name ? 0 : 10 }}
-                      className="flex items-center gap-1.5 px-3 py-1.5 bg-primary rounded-lg text-xs font-semibold"
-                    >
-                      <Play className="w-3 h-3 fill-current" />
-                      Play All
-                    </motion.button>
-                  </div>
-                </div>
 
-                {/* Bottom Accent Bar */}
-                <div className={`absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r ${cat.color} transform scale-x-0 group-hover:scale-x-100 transition-transform duration-500 origin-left`} />
-              </motion.div>
-            ))}
-          </AnimatePresence>
-        </div>
+                      {/* Title & Description */}
+                      <h3 className="text-xl font-bold mb-1 group-hover:text-primary transition-colors">{cat.name}</h3>
+                      <p className="text-sm text-gray-400 mb-4 line-clamp-2">
+                        {cat.description || `Explore ${cat.name} music from top artists`}
+                      </p>
+
+                      {/* Stats Row */}
+                      <div className="flex items-center gap-4 mb-4">
+                        <div className="flex items-center gap-1.5 text-xs text-gray-500">
+                          <Music className="w-3.5 h-3.5" />
+                          <span>{(cat.song_count || 0).toLocaleString()} songs</span>
+                        </div>
+                        <div className="flex items-center gap-1.5 text-xs text-gray-500">
+                          <Mic2 className="w-3.5 h-3.5" />
+                          <span>{cat.artist_count || 0} artists</span>
+                        </div>
+                      </div>
+
+                      {/* Hover Action */}
+                      <div className="flex items-center justify-between pt-3 border-t border-white/5">
+                        <div className="flex items-center gap-2">
+                          <div className="flex -space-x-2">
+                            {[1,2,3].map((n) => (
+                              <div key={n} className={`w-6 h-6 rounded-full ${meta.bgColor} border-2 border-background flex items-center justify-center`}>
+                                <span className="text-[8px] font-bold text-gray-400">{n}</span>
+                              </div>
+                            ))}
+                          </div>
+                          <span className="text-[10px] text-gray-500">
+                            {(cat.artist_count || 0) > 3 ? `+${(cat.artist_count || 0) - 3} more` : 'Artists'}
+                          </span>
+                        </div>
+                        
+                        <motion.button
+                          initial={false}
+                          animate={{ 
+                            opacity: hoveredCat === cat.id ? 1 : 0, 
+                            x: hoveredCat === cat.id ? 0 : 10 
+                          }}
+                          className="flex items-center gap-1.5 px-3 py-1.5 bg-primary rounded-lg text-xs font-semibold"
+                        >
+                          <Play className="w-3 h-3 fill-current" />
+                          Explore
+                        </motion.button>
+                      </div>
+                    </div>
+
+                    {/* Bottom Accent Bar */}
+                    <div className={`absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r ${meta.color} transform scale-x-0 group-hover:scale-x-100 transition-transform duration-500 origin-left`} />
+                  </motion.div>
+                )
+              })}
+            </AnimatePresence>
+          </div>
+        )}
       </div>
 
-      {/* BOTTOM SECTION - Recently Added */}
+      {/* BOTTOM SECTION - All Genres Mini */}
       <div className="px-4 md:px-8 pt-4">
         <div className="rounded-2xl overflow-hidden bg-gradient-to-br from-surface/80 to-surface border border-white/5 p-6">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2">
               <Clock className="w-5 h-5 text-primary" />
-              <h2 className="text-lg font-bold">Recently Added</h2>
+              <h2 className="text-lg font-bold">All Genres</h2>
             </div>
             <button 
-              onClick={() => navigate('/search?sort=newest')}
+              onClick={() => navigate('/search')}
               className="group flex items-center gap-1 text-xs text-gray-400 hover:text-white transition-colors"
             >
-              View All <ChevronRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
+              Explore All <ChevronRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
             </button>
           </div>
 
           <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3">
-            {categories.slice(0, 6).map((cat, i) => (
-              <motion.div
-                key={cat.name}
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: i * 0.05 }}
-                onClick={() => navigate(`/categories?genre=${encodeURIComponent(cat.name)}`)}
-                className="group flex items-center gap-3 p-3 rounded-xl bg-white/5 hover:bg-white/10 cursor-pointer transition-all"
-              >
-                <div className={`w-10 h-10 rounded-lg bg-gradient-to-br ${cat.color} flex items-center justify-center flex-shrink-0`}>
-                  <cat.icon className="w-5 h-5 text-white" />
-                </div>
-                <div className="min-w-0">
-                  <p className="font-semibold text-sm truncate group-hover:text-primary transition-colors">{cat.name}</p>
-                  <p className="text-[10px] text-gray-500">{cat.songCount} songs</p>
-                </div>
-              </motion.div>
-            ))}
+            {categories.slice(0, 6).map((cat, i) => {
+              const meta = getCategoryMeta(cat)
+              const Icon = meta.icon
+              return (
+                <motion.div
+                  key={cat.id}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: i * 0.05 }}
+                  onClick={() => navigate(`/search?q=${encodeURIComponent(cat.name)}`)}
+                  className="group flex items-center gap-3 p-3 rounded-xl bg-white/5 hover:bg-white/10 cursor-pointer transition-all"
+                >
+                  <div className={`w-10 h-10 rounded-lg bg-gradient-to-br ${meta.color} flex items-center justify-center flex-shrink-0`}>
+                    <Icon className="w-5 h-5 text-white" />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="font-semibold text-sm truncate group-hover:text-primary transition-colors">{cat.name}</p>
+                    <p className="text-[10px] text-gray-500">{(cat.song_count || 0).toLocaleString()} songs</p>
+                  </div>
+                </motion.div>
+              )
+            })}
           </div>
         </div>
       </div>
