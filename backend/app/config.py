@@ -14,10 +14,14 @@ class Settings(BaseSettings):
     SMTP_PORT: int = 587
     SMTP_USER: str = ""
     SMTP_PASSWORD: str = ""
-    # Use absolute path for Render persistence
     UPLOAD_DIR: str = os.getenv("UPLOAD_DIR", os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "uploads"))
     MAX_AUDIO_SIZE: int = 50 * 1024 * 1024
     MAX_IMAGE_SIZE: int = 5 * 1024 * 1024
+    
+    # NEW: Live Streaming configuration
+    RTMP_BASE_URL: str = os.getenv("RTMP_BASE_URL", "rtmp://live.cloudflare.com:1935/live")
+    HLS_BASE_URL: str = os.getenv("HLS_BASE_URL", "https://videodelivery.net")
+    WS_BASE_URL: str = os.getenv("WS_BASE_URL", "wss://your-render-api.onrender.com")
     
     class Config:
         env_file = ".env"
