@@ -41,7 +41,6 @@ class UserSettings(Base):
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id"), unique=True, nullable=False)
     
-    # Notifications
     push_notifications = Column(Boolean, default=True)
     email_notifications = Column(Boolean, default=True)
     new_release_alerts = Column(Boolean, default=True)
@@ -49,7 +48,6 @@ class UserSettings(Base):
     playlist_collabs = Column(Boolean, default=True)
     marketing_emails = Column(Boolean, default=False)
     
-    # Playback
     audio_quality = Column(String(20), default="high")
     crossfade = Column(Boolean, default=True)
     crossfade_duration = Column(Integer, default=5)
@@ -57,25 +55,21 @@ class UserSettings(Base):
     autoplay = Column(Boolean, default=True)
     gapless_playback = Column(Boolean, default=False)
     
-    # Appearance
     theme = Column(String(20), default="dark")
     compact_mode = Column(Boolean, default=False)
     show_lyrics = Column(Boolean, default=True)
     animations = Column(Boolean, default=True)
     font_size = Column(String(20), default="medium")
     
-    # Privacy
     private_profile = Column(Boolean, default=False)
     activity_sharing = Column(Boolean, default=True)
     listening_history = Column(Boolean, default=True)
     show_followers = Column(Boolean, default=True)
     allow_messages = Column(String(20), default="everyone")
     
-    # Security
     two_factor = Column(Boolean, default=False)
     login_alerts = Column(Boolean, default=True)
     
-    # Language
     language = Column(String(10), default="en")
     
     created_at = Column(DateTime(timezone=True), server_default=func.now())
@@ -251,3 +245,55 @@ class AdminLog(Base):
     details = Column(Text)
     ip_address = Column(String(45))
     created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+# ============ LIVE STREAMING MODELS ============
+
+class LiveStream(Base):
+    __tablename__ = "live_streams"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    artist_id = Column(Integer, ForeignKey("artists.id"), nullable=False)
+    title = Column(String(200), nullable=False)
+    description = Column(Text)
+    stream_key = Column(String(100), unique=True, nullable=False, index=True)
+    rtmp_url = Column(String(500))
+    hls_url = Column(String(500))
+    thumbnail_url = Column(String(500))
+    status = Column(String(20), default="scheduled")
+    started_at = Column(DateTime(timezone=True))
+    ended_at = Column(DateTime(timezone=True))
+    scheduled_at = Column(DateTime(timezone=True))
+    max_viewers = Column(Integer, default=0)
+    total_viewers = Column(Integer, default=0)
+    is_public = Column(Boolean, default=True)
+    chat_enabled = Column(Boolean, default=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    
+    artist = relationship("Artist")
+    viewers = relationship("LiveViewer", back_populates="stream", cascade="all, delete-orphan")
+    chat_messages = relationship("LiveChatMessage", back_populates="stream", cascade="all, delete-orphan")
+
+class LiveViewer(Base):
+    __tablename__ = "live_viewers"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    stream_id = Column(Integer, ForeignKey("live_streams.id"), nullable=False)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=True)
+    session_id = Column(String(100), nullable=False)
+    joined_at = Column(DateTime(timezone=True), server_default=func.now())
+    left_at = Column(DateTime(timezone=True))
+    
+    stream = relationship("LiveStream", back_populates="viewers")
+    user = relationship("User")
+
+class LiveChatMessage(Base):
+    __tablename__ = "live_chat_messages"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    stream_id = Column(Integer, ForeignKey("live_streams.id"), nullable=False)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    message = Column(Text, nullable=False)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    
+    stream = relationship("LiveStream", back_populates="chat_messages")
+    user = relationship("User")

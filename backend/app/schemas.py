@@ -326,9 +326,90 @@ class SearchResult(BaseModel):
     albums: List['AlbumResponse'] = []
     playlists: List['PlaylistResponse'] = []
 
+# ============ LIVE STREAMING SCHEMAS ============
+
+class LiveStreamBase(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    title: str
+    description: Optional[str] = None
+    scheduled_at: Optional[datetime] = None
+    is_public: bool = True
+    chat_enabled: bool = True
+
+class LiveStreamCreate(LiveStreamBase):
+    pass
+
+class LiveStreamUpdate(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    title: Optional[str] = None
+    description: Optional[str] = None
+    status: Optional[str] = None
+    is_public: Optional[bool] = None
+    chat_enabled: Optional[bool] = None
+
+class LiveStreamResponse(LiveStreamBase):
+    id: int
+    artist_id: int
+    stream_key: str
+    rtmp_url: Optional[str] = None
+    hls_url: Optional[str] = None
+    thumbnail_url: Optional[str] = None
+    status: str = "scheduled"
+    started_at: Optional[datetime] = None
+    ended_at: Optional[datetime] = None
+    max_viewers: int = 0
+    total_viewers: int = 0
+    current_viewers: int = 0
+    created_at: Optional[datetime] = None
+    artist: Optional['ArtistResponse'] = None
+
+class LiveStreamDetail(LiveStreamResponse):
+    chat_messages: List['LiveChatMessageResponse'] = []
+
+class LiveViewerResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: int
+    stream_id: int
+    user_id: Optional[int] = None
+    session_id: str
+    joined_at: Optional[datetime] = None
+    user: Optional['UserResponse'] = None
+
+class LiveChatMessageCreate(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    message: str
+
+class LiveChatMessageResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: int
+    stream_id: int
+    user_id: int
+    message: str
+    created_at: Optional[datetime] = None
+    user: Optional['UserResponse'] = None
+
+class LiveStreamStartResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    stream_id: int
+    stream_key: str
+    rtmp_url: str
+    hls_url: str
+    websocket_url: str
+    status: str = "live"
+
+class LiveStreamEndResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    stream_id: int
+    status: str = "ended"
+    duration_seconds: int = 0
+    total_viewers: int = 0
+    max_viewers: int = 0
+
 # Update forward references
 ArtistDetail.model_rebuild()
 AlbumDetail.model_rebuild()
 SongDetail.model_rebuild()
 PlaylistDetail.model_rebuild()
 ArtistDashboard.model_rebuild()
+LiveStreamResponse.model_rebuild()
+LiveStreamDetail.model_rebuild()

@@ -7,7 +7,8 @@ from app.database import engine, Base, SessionLocal
 from app.routers import (
     auth, users, artists, songs, albums, playlists,
     categories, likes, follows, comments, search,
-    streaming, notifications, admin, analytics
+    streaming, notifications, admin, analytics,
+    live, ws_live
 )
 from app import models
 
@@ -30,11 +31,11 @@ def seed_categories():
             ]
             db.add_all(default_categories)
             db.commit()
-            print("✅ Categories seeded successfully")
+            print("Categories seeded successfully")
         else:
-            print(f"ℹ️ {existing} categories already exist, skipping seed")
+            print(f"{existing} categories already exist, skipping seed")
     except Exception as e:
-        print(f"❌ Error seeding categories: {e}")
+        print(f"Error seeding categories: {e}")
         db.rollback()
     finally:
         db.close()
@@ -56,11 +57,11 @@ def seed_admin():
             )
             db.add(admin)
             db.commit()
-            print("✅ Admin user created: admin@turkana.music / AdminPass123!")
+            print("Admin user created: admin@turkana.music / AdminPass123!")
         else:
-            print(f"ℹ️ Admin user already exists: {existing.email}")
+            print(f"Admin user already exists: {existing.email}")
     except Exception as e:
-        print(f"❌ Error seeding admin: {e}")
+        print(f"Error seeding admin: {e}")
         db.rollback()
     finally:
         db.close()
@@ -76,7 +77,6 @@ app = FastAPI(
 )
 
 # CORS - Updated for production
-# Add your actual deployed frontend URL to this list
 origins = [
     "http://localhost:5173",
     "http://localhost:5174",
@@ -84,13 +84,7 @@ origins = [
     "https://turkana-connect-admin.onrender.com",
     "https://apiaro-music.onrender.com",
     "https://apiaro-music-admin.onrender.com",
-    # ADD YOUR FRONTEND URL HERE, e.g.:
-    # "https://turkana-connect.onrender.com",
-    # "https://your-frontend-url.onrender.com",
 ]
-
-# Optional: Allow all origins in development (comment out the specific list above if you prefer)
-# origins = ["*"]
 
 app.add_middleware(
     CORSMiddleware,
@@ -100,13 +94,13 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# FIX: Only mount static files if directory exists (for local dev)
+# Static files
 upload_dir = settings.UPLOAD_DIR
 if os.path.isdir(upload_dir):
     app.mount("/uploads", StaticFiles(directory=upload_dir), name="uploads")
-    print(f"📁 Static files mounted at /uploads from {upload_dir}")
+    print(f"Static files mounted at /uploads from {upload_dir}")
 else:
-    print(f"⚠️ Upload directory '{upload_dir}' not found. Skipping static mount. Using Cloudinary for file storage.")
+    print(f"Upload directory '{upload_dir}' not found. Skipping static mount. Using Cloudinary for file storage.")
 
 # API routes
 app.include_router(auth.router, prefix="/api/v1")
@@ -124,6 +118,9 @@ app.include_router(streaming.router, prefix="/api/v1")
 app.include_router(notifications.router, prefix="/api/v1")
 app.include_router(admin.router, prefix="/api/v1")
 app.include_router(analytics.router, prefix="/api/v1")
+# NEW: Live streaming routes
+app.include_router(live.router, prefix="/api/v1")
+app.include_router(ws_live.router, prefix="/api/v1")
 
 @app.get("/health")
 def health_check():
