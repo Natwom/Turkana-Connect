@@ -6,6 +6,10 @@ export const getArtist = (id) => api.get(`/api/v1/artists/${id}`)
 export const followArtist = (id) => api.post(`/api/v1/artists/${id}/follow`)
 export const unfollowArtist = (id) => api.delete(`/api/v1/artists/${id}/follow`)
 
+// NEW: Following feed
+export const getFollowingFeed = (limit = 20) => api.get(`/api/v1/artists/following/feed?limit=${limit}`)
+export const getFollowingList = () => api.get('/api/v1/artists/following/list')
+
 // NEW: Artist own profile / dashboard
 export const getMyArtistProfile = () => api.get('/api/v1/artists/me')
 export const updateMyArtistProfile = (formData) => api.patch('/api/v1/artists/me', formData, {
@@ -19,6 +23,8 @@ export default {
   getArtist, 
   followArtist, 
   unfollowArtist,
+  getFollowingFeed,
+  getFollowingList,
   getMyArtistProfile,
   updateMyArtistProfile,
   getMyArtistStats

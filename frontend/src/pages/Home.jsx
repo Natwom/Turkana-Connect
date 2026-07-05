@@ -10,7 +10,8 @@ import {
   TrendingUp, Disc, Users, Sparkles, Play, ChevronRight, 
   Headphones, Flame, Clock, Star, ArrowRight, Music, Mic2,
   Award, Heart, Share2, BarChart3, Eye, X, Upload,
-  Trophy, Zap, History
+  Trophy, Zap, History, Radio, UserCheck, Compass,
+  Video, Mic, Bell, Plus
 } from 'lucide-react'
 
 const getImageUrl = (path) => {
@@ -51,6 +52,14 @@ const Home = () => {
   const [error, setError] = useState(null)
   const [hoveredSong, setHoveredSong] = useState(null)
   const [hoveredArtist, setHoveredArtist] = useState(null)
+
+  // NEW: For You, Following, Live states
+  const [activeFeedTab, setActiveFeedTab] = useState('forYou')
+  const [forYouSongs, setForYouSongs] = useState([])
+  const [followingSongs, setFollowingSongs] = useState([])
+  const [followingList, setFollowingList] = useState([])
+  const [liveArtists, setLiveArtists] = useState([])
+  const [feedLoading, setFeedLoading] = useState(false)
 
   // Quick Access Modal States
   const [activeModal, setActiveModal] = useState(null)
@@ -120,6 +129,12 @@ const Home = () => {
           users: featuredArtistsData.reduce((acc, a) => acc + (a.followers_count || 0), 0)
         })
 
+        // Set For You = mix of trending + new releases
+        const mixed = [...trendingData, ...newReleasesData].filter((song, index, self) => 
+          index === self.findIndex((s) => s.id === song.id)
+        )
+        setForYouSongs(mixed.slice(0, 12))
+
         if (errors.length >= 3) {
           setError('Unable to load content. Please try again.')
         }
@@ -131,6 +146,39 @@ const Home = () => {
       }
     }
     fetchData()
+  }, [])
+
+  // NEW: Fetch Following feed when tab switched
+  useEffect(() => {
+    if (activeFeedTab === 'following' && user) {
+      fetchFollowingFeed()
+    }
+  }, [activeFeedTab, user])
+
+  const fetchFollowingFeed = async () => {
+    setFeedLoading(true)
+    try {
+      const [feedRes, listRes] = await Promise.all([
+        artistsApi.getFollowingFeed(12).catch(() => ({ data: [] })),
+        artistsApi.getFollowingList().catch(() => ({ data: [] }))
+      ])
+      setFollowingSongs(Array.isArray(feedRes.data) ? feedRes.data : [])
+      setFollowingList(Array.isArray(listRes.data) ? listRes.data : [])
+    } catch (err) {
+      console.error('Following feed failed:', err)
+    } finally {
+      setFeedLoading(false)
+    }
+  }
+
+  // NEW: Mock live artists (replace with real API when you build live streaming)
+  useEffect(() => {
+    // Simulate live artists - in production, fetch from /api/v1/live/streams
+    const mockLiveArtists = [
+      { id: 1, stage_name: 'DJ Turkana', image_url: '/default-avatar.jpg', viewers: 1240, title: 'Live Mix Session', isLive: true },
+      { id: 2, stage_name: 'Nakwam Beats', image_url: '/default-avatar.jpg', viewers: 856, title: 'Afrobeats Night', isLive: true },
+    ]
+    setLiveArtists(mockLiveArtists)
   }, [])
 
   const openModal = async (type) => {
@@ -183,6 +231,18 @@ const Home = () => {
     }
   }
 
+  const handlePlayForYou = (song) => {
+    if (player?.playSong) {
+      player.playSong(song, forYouSongs)
+    }
+  }
+
+  const handlePlayFollowing = (song) => {
+    if (player?.playSong) {
+      player.playSong(song, followingSongs)
+    }
+  }
+
   const getArtistName = (song) => {
     if (!song) return 'Unknown Artist'
     return song.artist_name || song.artist?.stage_name || 'Unknown Artist'
@@ -229,6 +289,12 @@ const Home = () => {
   }
 
   const ModalIcon = getModalIcon()
+
+  // NEW: Feed tab config
+  const feedTabs = [
+    { id: 'forYou', label: 'For You', icon: Compass },
+    { id: 'following', label: 'Following', icon: UserCheck },
+  ]
 
   return (
     <div className="space-y-0 pb-10">
@@ -303,6 +369,290 @@ const Home = () => {
           </div>
         </div>
       </motion.section>
+
+      {/* NEW: GO LIVE SECTION (for artists only) */}
+      {user?.role === 'artist' && (
+        <section className="px-4 md:px-8 py-4">
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="relative rounded-2xl overflow-hidden bg-gradient-to-r from-red-600/20 via-rose-600/10 to-red-600/20 border border-red-500/20 p-4"
+          >
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="relative">
+                  <div className="w-10 h-10 bg-red-500 rounded-xl flex items-center justify-center">
+                    <Video className="w-5 h-5 text-white" />
+                  </div>
+                  <span className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full border-2 border-background animate-pulse" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-sm">Go Live</h3>
+                  <p className="text-xs text-gray-400">Stream to your fans in real-time</p>
+                </div>
+              </div>
+              <button 
+                onClick={() => navigate('/go-live')}
+                className="flex items-center gap-2 px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-xl text-sm font-semibold transition-all hover:scale-105"
+              >
+                <Radio className="w-4 h-4" />
+                Start Stream
+              </button>
+            </div>
+          </motion.div>
+        </section>
+      )}
+
+      {/* NEW: LIVE STREAMS SECTION */}
+      {liveArtists.length > 0 && (
+        <section className="px-4 md:px-8 py-4">
+          <div className="flex items-end justify-between mb-4">
+            <div className="flex items-center gap-2">
+              <div className="relative">
+                <Radio className="w-5 h-5 text-red-500" />
+                <span className="absolute -top-1 -right-1 w-2 h-2 bg-red-500 rounded-full animate-pulse" />
+              </div>
+              <h2 className="text-xl font-bold">Live Now</h2>
+            </div>
+            <button onClick={() => navigate('/live')} className="group flex items-center gap-1 text-xs text-gray-400 hover:text-white transition-colors">
+              See All <ChevronRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
+            </button>
+          </div>
+
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+            {liveArtists.map((artist, i) => (
+              <motion.div
+                key={artist.id}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: i * 0.05 }}
+                onClick={() => navigate(`/live/${artist.id}`)}
+                className="group relative rounded-2xl overflow-hidden cursor-pointer"
+              >
+                <div className="aspect-video relative bg-gradient-to-br from-red-900/50 to-rose-900/50">
+                  <img 
+                    src={getImageUrl(artist.image_url)} 
+                    alt={artist.stage_name}
+                    className="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity"
+                    onError={(e) => { e.target.src = '/default-avatar.jpg' }}
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent" />
+                  
+                  {/* Live Badge */}
+                  <div className="absolute top-2 left-2 flex items-center gap-1.5 px-2 py-1 bg-red-500 rounded-md">
+                    <span className="w-1.5 h-1.5 bg-white rounded-full animate-pulse" />
+                    <span className="text-[10px] font-bold text-white uppercase">Live</span>
+                  </div>
+                  
+                  {/* Viewers */}
+                  <div className="absolute top-2 right-2 flex items-center gap-1 px-2 py-1 bg-black/50 backdrop-blur-sm rounded-md">
+                    <Users className="w-3 h-3 text-white" />
+                    <span className="text-[10px] text-white">{artist.viewers?.toLocaleString()}</span>
+                  </div>
+                  
+                  {/* Play Button */}
+                  <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                    <div className="w-12 h-12 bg-red-500 rounded-full flex items-center justify-center shadow-lg">
+                      <Play className="w-5 h-5 text-white ml-0.5" fill="white" />
+                    </div>
+                  </div>
+                  
+                  {/* Bottom Info */}
+                  <div className="absolute bottom-0 left-0 right-0 p-3">
+                    <h3 className="font-semibold text-sm text-white truncate">{artist.stage_name}</h3>
+                    <p className="text-xs text-gray-300 truncate">{artist.title}</p>
+                  </div>
+                </div>
+              </motion.div>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* NEW: FOR YOU / FOLLOWING FEED SECTION */}
+      <section className="px-4 md:px-8 py-4">
+        <div className="flex items-center gap-2 mb-4">
+          {feedTabs.map((tab) => (
+            <button
+              key={tab.id}
+              onClick={() => setActiveFeedTab(tab.id)}
+              className={`relative flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium transition-all ${
+                activeFeedTab === tab.id
+                  ? 'text-white'
+                  : 'text-gray-400 hover:text-gray-200'
+              }`}
+            >
+              {activeFeedTab === tab.id && (
+                <motion.div
+                  layoutId="feedTab"
+                  className="absolute inset-0 bg-gradient-to-r from-violet-600 to-fuchsia-600 rounded-xl"
+                  transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
+                />
+              )}
+              <span className="relative z-10 flex items-center gap-2">
+                <tab.icon className="w-4 h-4" />
+                {tab.label}
+              </span>
+            </button>
+          ))}
+        </div>
+
+        {/* For You Content */}
+        {activeFeedTab === 'forYou' && (
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3 }}
+          >
+            {forYouSongs.length === 0 ? (
+              <div className="text-center py-8 text-gray-500 text-sm">No songs available yet</div>
+            ) : (
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-3">
+                {forYouSongs.map((song, i) => (
+                  <motion.div
+                    key={song.id}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: i * 0.03 }}
+                    onMouseEnter={() => setHoveredSong(song.id)}
+                    onMouseLeave={() => setHoveredSong(null)}
+                    onClick={() => handlePlayForYou(song)}
+                    className="group cursor-pointer"
+                  >
+                    <div className="relative aspect-square rounded-xl overflow-hidden mb-2">
+                      <img 
+                        src={getImageUrl(song.cover_url)} 
+                        alt={song.title} 
+                        className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+                        onError={(e) => { e.target.src = '/default-cover.jpg' }}
+                      />
+                      <AnimatePresence>
+                        {hoveredSong === song.id && (
+                          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-black/50 flex items-center justify-center backdrop-blur-sm">
+                            <div className="w-10 h-10 bg-primary rounded-full flex items-center justify-center">
+                              <Play className="w-4 h-4 fill-current ml-0.5" />
+                            </div>
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+                    </div>
+                    <h3 className="font-semibold text-sm truncate group-hover:text-primary transition-colors">{song.title}</h3>
+                    <p className="text-xs text-gray-500 truncate">{getArtistName(song)}</p>
+                  </motion.div>
+                ))}
+              </div>
+            )}
+          </motion.div>
+        )}
+
+        {/* Following Content */}
+        {activeFeedTab === 'following' && (
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3 }}
+          >
+            {!user ? (
+              <div className="text-center py-12">
+                <UserCheck className="w-12 h-12 text-gray-600 mx-auto mb-4" />
+                <h3 className="text-lg font-bold text-white mb-2">Sign in to see updates</h3>
+                <p className="text-gray-500 text-sm mb-4">Follow your favorite artists and never miss a new release.</p>
+                <button 
+                  onClick={() => navigate('/login')}
+                  className="px-6 py-2.5 bg-primary hover:bg-primary/90 rounded-xl font-medium text-sm transition-all"
+                >
+                  Sign In
+                </button>
+              </div>
+            ) : feedLoading ? (
+              <div className="flex items-center justify-center py-12">
+                <div className="w-8 h-8 border-3 border-primary border-t-transparent rounded-full animate-spin" />
+              </div>
+            ) : followingList.length === 0 ? (
+              <div className="text-center py-12">
+                <UserCheck className="w-12 h-12 text-gray-600 mx-auto mb-4" />
+                <h3 className="text-lg font-bold text-white mb-2">You're not following anyone yet</h3>
+                <p className="text-gray-500 text-sm mb-4">Discover and follow artists to see their latest songs here.</p>
+                <button 
+                  onClick={() => navigate('/search?type=artists')}
+                  className="px-6 py-2.5 bg-primary hover:bg-primary/90 rounded-xl font-medium text-sm transition-all"
+                >
+                  Discover Artists
+                </button>
+              </div>
+            ) : followingSongs.length === 0 ? (
+              <div className="text-center py-12">
+                <Music className="w-12 h-12 text-gray-600 mx-auto mb-4" />
+                <h3 className="text-lg font-bold text-white mb-2">No new releases from followed artists</h3>
+                <p className="text-gray-500 text-sm">Check back later for updates from artists you follow.</p>
+              </div>
+            ) : (
+              <>
+                {/* Followed Artists Quick Row */}
+                <div className="flex items-center gap-3 mb-6 overflow-x-auto pb-2 scrollbar-hide">
+                  {followingList.map((artist) => (
+                    <button
+                      key={artist.id}
+                      onClick={() => navigate(`/artist/${artist.id}`)}
+                      className="flex flex-col items-center gap-1.5 min-w-[64px]"
+                    >
+                      <div className="w-14 h-14 rounded-full overflow-hidden ring-2 ring-white/10 hover:ring-primary/50 transition-all">
+                        <img 
+                          src={getImageUrl(artist.image_url)} 
+                          alt={artist.stage_name}
+                          className="w-full h-full object-cover"
+                          onError={(e) => { e.target.src = '/default-avatar.jpg' }}
+                        />
+                      </div>
+                      <span className="text-[10px] text-gray-400 truncate max-w-[64px]">{artist.stage_name}</span>
+                    </button>
+                  ))}
+                </div>
+
+                {/* Following Songs Grid */}
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-3">
+                  {followingSongs.map((song, i) => (
+                    <motion.div
+                      key={song.id}
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: i * 0.03 }}
+                      onMouseEnter={() => setHoveredSong(song.id)}
+                      onMouseLeave={() => setHoveredSong(null)}
+                      onClick={() => handlePlayFollowing(song)}
+                      className="group cursor-pointer"
+                    >
+                      <div className="relative aspect-square rounded-xl overflow-hidden mb-2">
+                        <img 
+                          src={getImageUrl(song.cover_url)} 
+                          alt={song.title} 
+                          className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+                          onError={(e) => { e.target.src = '/default-cover.jpg' }}
+                        />
+                        <AnimatePresence>
+                          {hoveredSong === song.id && (
+                            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-black/50 flex items-center justify-center backdrop-blur-sm">
+                              <div className="w-10 h-10 bg-primary rounded-full flex items-center justify-center">
+                                <Play className="w-4 h-4 fill-current ml-0.5" />
+                              </div>
+                            </motion.div>
+                          )}
+                        </AnimatePresence>
+                        {/* New Badge */}
+                        <div className="absolute top-1.5 left-1.5 px-1.5 py-0.5 bg-primary/80 backdrop-blur-sm rounded text-[9px] font-bold text-white uppercase">
+                          New
+                        </div>
+                      </div>
+                      <h3 className="font-semibold text-sm truncate group-hover:text-primary transition-colors">{song.title}</h3>
+                      <p className="text-xs text-gray-500 truncate">{getArtistName(song)}</p>
+                    </motion.div>
+                  ))}
+                </div>
+              </>
+            )}
+          </motion.div>
+        )}
+      </section>
 
       {/* TRENDING SECTION */}
       <section className="px-4 md:px-8 py-4">
@@ -490,7 +840,7 @@ const Home = () => {
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: i * 0.05 }}
-                onClick={() => navigate(`/categories?genre=${encodeURIComponent(cat.slug || cat.name)}`)}
+                onClick={() => navigate(`/search?q=${encodeURIComponent(cat.name)}`)}
                 className="relative h-28 rounded-xl overflow-hidden cursor-pointer group"
                 style={{ backgroundColor: cat.color || '#7C3AED' }}
               >

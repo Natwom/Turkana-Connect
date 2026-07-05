@@ -37,6 +37,57 @@ def get_featured_artists(limit: int = 12, db: Session = Depends(get_db)):
         print(traceback.format_exc())
         raise HTTPException(status_code=500, detail=f"Server error: {str(e)}")
 
+# ============ NEW: FOLLOWING FEED ============
+@router.get("/following/feed", response_model=List[schemas.SongResponse])
+def get_following_feed(
+    limit: int = 20,
+    current_user: models.User = Depends(auth.get_current_active_user),
+    db: Session = Depends(get_db)
+):
+    """Get latest songs from artists the user follows"""
+    # Get followed artist IDs
+    followed_ids = db.query(models.Follow.artist_id).filter(
+        models.Follow.follower_id == current_user.id
+    ).subquery()
+    
+    # Get their latest approved songs
+    songs = db.query(models.Song).filter(
+        models.Song.artist_id.in_(followed_ids),
+        models.Song.is_approved == True
+    ).order_by(
+        desc(models.Song.created_at)
+    ).limit(limit).all()
+    
+    # Enrich with artist_name
+    result = []
+    for song in songs:
+        song_data = schemas.SongResponse.model_validate(song).model_dump()
+        if song.artist:
+            song_data["artist_name"] = song.artist.stage_name
+        result.append(song_data)
+    
+    return result
+
+@router.get("/following/list", response_model=List[schemas.ArtistResponse])
+def get_following_list(
+    current_user: models.User = Depends(auth.get_current_active_user),
+    db: Session = Depends(get_db)
+):
+    """Get list of artists the user follows"""
+    follows = db.query(models.Follow).filter(
+        models.Follow.follower_id == current_user.id
+    ).all()
+    
+    artist_ids = [f.artist_id for f in follows]
+    if not artist_ids:
+        return []
+    
+    artists = db.query(models.Artist).filter(
+        models.Artist.id.in_(artist_ids)
+    ).all()
+    
+    return artists
+
 @router.post("/", response_model=schemas.ArtistResponse, status_code=201)
 async def create_artist(
     stage_name: str = Form(...),
