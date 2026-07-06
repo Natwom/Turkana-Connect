@@ -22,25 +22,33 @@ const Analytics = () => {
   const [overview, setOverview] = useState(null)
   const [streamActivity, setStreamActivity] = useState([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
   const [timeRange, setTimeRange] = useState('7d')
   const [activeTab, setActiveTab] = useState('songs')
 
   useEffect(() => {
     const fetchData = async () => {
       setLoading(true)
+      setError(null)
       try {
+        console.log('🔍 Fetching analytics with range:', timeRange)
         const [songsRes, artistsRes, overviewRes, activityRes] = await Promise.all([
           api.get(`/api/v1/analytics/top-songs?range=${timeRange}`),
           api.get(`/api/v1/analytics/top-artists?range=${timeRange}`),
           api.get(`/api/v1/analytics/overview?range=${timeRange}`),
           api.get(`/api/v1/analytics/stream-activity?range=${timeRange}`)
         ])
+        console.log('✅ Top Songs:', songsRes.data)
+        console.log('✅ Top Artists:', artistsRes.data)
+        console.log('✅ Overview:', overviewRes.data)
+        console.log('✅ Stream Activity:', activityRes.data)
         setTopSongs(songsRes.data)
         setTopArtists(artistsRes.data)
         setOverview(overviewRes.data)
         setStreamActivity(activityRes.data)
       } catch (err) {
-        console.error('Failed to fetch analytics:', err)
+        console.error('❌ Analytics error:', err.response?.status, err.response?.data, err.message)
+        setError(err.response?.data?.detail || err.message || 'Failed to load analytics')
       } finally {
         setLoading(false)
       }
@@ -82,6 +90,24 @@ const Analytics = () => {
 
   return (
     <div className="min-h-screen pb-20 space-y-8">
+      {/* Error Banner */}
+      {error && (
+        <motion.div 
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="bg-red-500/10 border border-red-500/20 rounded-xl p-4 text-red-400 text-sm"
+        >
+          <p className="font-medium">Error loading data:</p>
+          <p>{error}</p>
+          <button 
+            onClick={() => setTimeRange(prev => prev)} 
+            className="mt-2 text-red-300 hover:text-red-200 underline"
+          >
+            Retry
+          </button>
+        </motion.div>
+      )}
+
       {/* Header */}
       <motion.div 
         initial={{ opacity: 0, y: -20 }}

@@ -3,16 +3,18 @@ from sqlalchemy.orm import Session
 from sqlalchemy import func, desc
 from typing import List, Optional
 from datetime import datetime, timedelta
+from pydantic import BaseModel, ConfigDict
 from app.database import get_db
 from app import models, schemas, auth
 from app.services.notification import NotificationService
 
 router = APIRouter(prefix="/admin", tags=["Admin"])
 
-# ============ NEW: Extended Dashboard Response ============
 
-class ActivityItem(schemas.BaseModel):
-    model_config = schemas.ConfigDict(from_attributes=True)
+# ============ Pydantic Response Models ============
+
+class ActivityItem(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
     type: str
     action: str
     detail: str
@@ -21,29 +23,36 @@ class ActivityItem(schemas.BaseModel):
     color: str
     bg: str
 
-class TopSongItem(schemas.BaseModel):
-    model_config = schemas.ConfigDict(from_attributes=True)
+class TopSongItem(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
     title: str
     artist: str
     plays: str
     trend: str
     cover: str
 
-class QuickStatItem(schemas.BaseModel):
-    model_config = schemas.ConfigDict(from_attributes=True)
+class QuickStatItem(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
     label: str
     value: str
     icon: str
     color: str
 
-class DashboardResponse(schemas.DashboardStats):
-    model_config = schemas.ConfigDict(from_attributes=True)
+class DashboardResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    total_users: int = 0
+    total_artists: int = 0
+    total_songs: int = 0
+    total_streams: int = 0
+    pending_approvals: int = 0
+    recent_reports: int = 0
     recent_activity: List[ActivityItem] = []
     top_songs: List[TopSongItem] = []
     chart_data: List[int] = []
     quick_stats: List[QuickStatItem] = []
 
-# ============ HELPER: Time Ago ============
+
+# ============ Helper: Time Ago ============
 
 def time_ago(dt: Optional[datetime]) -> str:
     if not dt:
@@ -63,6 +72,7 @@ def time_ago(dt: Optional[datetime]) -> str:
         return f"{days} day{'s' if days > 1 else ''} ago"
     return dt.strftime("%b %d")
 
+
 # ============ DASHBOARD ============
 
 @router.get("/dashboard", response_model=DashboardResponse)
@@ -75,17 +85,16 @@ def dashboard_stats(
     total_artists = db.query(models.Artist).count()
     total_songs = db.query(models.Song).count()
     total_streams = db.query(func.sum(models.Song.play_count)).scalar() or 0
-    pending_approvals = (
-        db.query(models.Song).filter(models.Song.is_approved == False).count() +
-        db.query(models.Artist).filter(models.Artist.is_approved == False).count()
-    )
+    pending_songs = db.query(models.Song).filter(models.Song.is_approved == False).count()
+    pending_artists = db.query(models.Artist).filter(models.Artist.is_approved == False).count()
+    pending_approvals = pending_songs + pending_artists
     recent_reports = db.query(models.Report).filter(models.Report.status == "pending").count()
 
-    # --- Recent Activity (from AdminLog, PlayHistory, User, Song, Report) ---
+    # --- Recent Activity ---
     recent_activity = []
     
-    # Recent user registrations
-    recent_users = db.query(models.User).order_by(desc(models.User.created_at)).limit(3).all()
+    # Recent users
+    recent_users = db.query(models.User).order_by(desc(models.User.created_at)).limit(2).all()
     for u in recent_users:
         recent_activity.append(ActivityItem(
             type="user", action="New user registered",
@@ -93,8 +102,8 @@ def dashboard_stats(
             icon="Users", color="text-blue-400", bg="bg-blue-500/10"
         ))
     
-    # Recent song uploads
-    recent_songs = db.query(models.Song).order_by(desc(models.Song.created_at)).limit(3).all()
+    # Recent songs
+    recent_songs = db.query(models.Song).order_by(desc(models.Song.created_at)).limit(2).all()
     for s in recent_songs:
         artist_name = s.artist.stage_name if s.artist else "Unknown"
         recent_activity.append(ActivityItem(
@@ -103,10 +112,10 @@ def dashboard_stats(
             icon="Music", color="text-fuchsia-400", bg="bg-fuchsia-500/10"
         ))
     
-    # Recent artist approvals
+    # Recent approved artists
     recent_artists = db.query(models.Artist).filter(
         models.Artist.is_approved == True
-    ).order_by(desc(models.Artist.created_at)).limit(2).all()
+    ).order_by(desc(models.Artist.created_at)).limit(1).all()
     for a in recent_artists:
         recent_activity.append(ActivityItem(
             type="artist", action="Artist approved",
@@ -117,18 +126,19 @@ def dashboard_stats(
     # Recent reports
     reports = db.query(models.Report).filter(
         models.Report.status == "pending"
-    ).order_by(desc(models.Report.created_at)).limit(2).all()
+    ).order_by(desc(models.Report.created_at)).limit(1).all()
     for r in reports:
+        detail = r.reason[:40] + ('...' if len(r.reason) > 40 else '')
         recent_activity.append(ActivityItem(
             type="report", action="Content report",
-            detail=f"{r.reason[:40]}{'...' if len(r.reason) > 40 else ''}", time=time_ago(r.created_at),
+            detail=detail, time=time_ago(r.created_at),
             icon="AlertTriangle", color="text-amber-400", bg="bg-amber-500/10"
         ))
     
-    # Recent stream milestones (songs with >100K plays, ordered by play_count)
+    # Milestone songs
     milestone_songs = db.query(models.Song).filter(
         models.Song.play_count >= 100000
-    ).order_by(desc(models.Song.play_count)).limit(2).all()
+    ).order_by(desc(models.Song.play_count)).limit(1).all()
     for s in milestone_songs:
         artist_name = s.artist.stage_name if s.artist else "Unknown"
         plays_m = f"{s.play_count / 1000000:.1f}M" if s.play_count >= 1000000 else f"{s.play_count // 1000}K"
@@ -138,10 +148,9 @@ def dashboard_stats(
             icon="Headphones", color="text-violet-400", bg="bg-violet-500/10"
         ))
     
-    # Sort by recency (parse time_ago back to rough ordering — simpler: just slice)
     recent_activity = recent_activity[:6]
 
-    # --- Top Songs (real data) ---
+    # --- Top Songs ---
     top_songs_db = db.query(models.Song).filter(
         models.Song.is_approved == True
     ).order_by(desc(models.Song.play_count)).limit(4).all()
@@ -154,7 +163,6 @@ def dashboard_stats(
         "bg-gradient-to-br from-blue-500 to-cyan-600",
     ]
     
-    # Calculate trends (compare last 7 days vs previous 7 days via PlayHistory)
     seven_days_ago = datetime.utcnow() - timedelta(days=7)
     fourteen_days_ago = datetime.utcnow() - timedelta(days=14)
     
@@ -162,7 +170,6 @@ def dashboard_stats(
         artist_name = s.artist.stage_name if s.artist else "Unknown"
         plays_str = f"{s.play_count / 1000000:.1f}M" if s.play_count >= 1000000 else f"{s.play_count / 1000:.1f}K" if s.play_count >= 1000 else str(s.play_count)
         
-        # Calculate trend from PlayHistory
         recent_plays = db.query(func.count(models.PlayHistory.id)).filter(
             models.PlayHistory.song_id == s.id,
             models.PlayHistory.played_at >= seven_days_ago
@@ -177,7 +184,7 @@ def dashboard_stats(
         if prev_plays > 0:
             trend_pct = int(((recent_plays - prev_plays) / prev_plays) * 100)
         else:
-            trend_pct = recent_plays * 10  # Arbitrary boost for new songs
+            trend_pct = recent_plays * 10
         
         trend_str = f"+{trend_pct}%" if trend_pct >= 0 else f"{trend_pct}%"
         
@@ -185,8 +192,8 @@ def dashboard_stats(
             title=s.title, artist=artist_name, plays=plays_str,
             trend=trend_str, cover=gradients[i % len(gradients)]
         ))
-    
-    # --- Chart Data: Monthly streams for last 12 months ---
+
+    # --- Chart Data ---
     chart_data = []
     for month_offset in range(11, -1, -1):
         month_start = datetime.utcnow().replace(day=1) - timedelta(days=month_offset * 30)
@@ -195,15 +202,12 @@ def dashboard_stats(
             models.PlayHistory.played_at >= month_start,
             models.PlayHistory.played_at < month_end
         ).scalar() or 0
-        # Normalize to 0-100 scale for chart display
         chart_data.append(min(monthly_plays, 100))
     
-    # If all zeros, use play_count distribution as fallback
     if sum(chart_data) == 0:
         chart_data = [35, 55, 40, 70, 65, 85, 60, 90, 75, 100, 80, 95]
 
     # --- Quick Stats ---
-    # Uptime is static (server metric), likes today is real
     today_start = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
     likes_today = db.query(func.count(models.Like.id)).filter(
         models.Like.created_at >= today_start
@@ -226,6 +230,7 @@ def dashboard_stats(
         chart_data=chart_data,
         quick_stats=quick_stats
     )
+
 
 # ============ EXISTING ROUTES (unchanged) ============
 

@@ -18,7 +18,6 @@ import {
 } from 'lucide-react'
 import api from '../api/axios'
 
-// Icon mapping for dynamic activity icons
 const iconMap = {
   Users, Music, Disc, AlertTriangle, Headphones, Play, Heart,
   CheckCircle2, ArrowUpRight, ArrowDownRight, RefreshCw, Calendar, Clock, MoreHorizontal
@@ -40,15 +39,19 @@ const Dashboard = () => {
   const [loading, setLoading] = useState(true)
   const [lastUpdated, setLastUpdated] = useState(new Date())
   const [refreshing, setRefreshing] = useState(false)
+  const [error, setError] = useState(null)
 
   const fetchStats = async () => {
     try {
       setRefreshing(true)
+      setError(null)
       const res = await api.get('/api/v1/admin/dashboard')
+      console.log('✅ Dashboard data:', res.data)
       setStats(res.data)
       setLastUpdated(new Date())
     } catch (err) {
-      console.error('Failed to fetch stats:', err)
+      console.error('❌ Dashboard error:', err.response?.status, err.response?.data, err.message)
+      setError(err.response?.data?.detail || err.message || 'Failed to load dashboard')
     } finally {
       setLoading(false)
       setRefreshing(false)
@@ -83,6 +86,21 @@ const Dashboard = () => {
 
   return (
     <div className="min-h-screen pb-20 space-y-8">
+      {/* Error Banner */}
+      {error && (
+        <motion.div 
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="bg-red-500/10 border border-red-500/20 rounded-xl p-4 text-red-400 text-sm"
+        >
+          <p className="font-medium">Error loading data:</p>
+          <p>{error}</p>
+          <button onClick={fetchStats} className="mt-2 text-red-300 hover:text-red-200 underline">
+            Retry
+          </button>
+        </motion.div>
+      )}
+
       {/* Header */}
       <motion.div 
         initial={{ opacity: 0, y: -20 }}
@@ -192,7 +210,7 @@ const Dashboard = () => {
           </div>
         </motion.div>
 
-        {/* Right Column: Pending Actions + Quick Stats */}
+        {/* Right Column */}
         <motion.div 
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}

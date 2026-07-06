@@ -11,17 +11,17 @@ router = APIRouter(prefix="/analytics", tags=["Analytics"])
 def get_range_dates(range_val: str):
     now = datetime.utcnow()
     if range_val == '24h':
-        return now - timedelta(hours=24), now - timedelta(hours=48), 'hour'
+        return now - timedelta(hours=24), now - timedelta(hours=48)
     elif range_val == '7d':
-        return now - timedelta(days=7), now - timedelta(days=14), 'day'
+        return now - timedelta(days=7), now - timedelta(days=14)
     elif range_val == '30d':
-        return now - timedelta(days=30), now - timedelta(days=60), 'day'
+        return now - timedelta(days=30), now - timedelta(days=60)
     elif range_val == '90d':
-        return now - timedelta(days=90), now - timedelta(days=180), 'week'
+        return now - timedelta(days=90), now - timedelta(days=180)
     elif range_val == '1y':
-        return now - timedelta(days=365), now - timedelta(days=730), 'month'
+        return now - timedelta(days=365), now - timedelta(days=730)
     else:
-        return now - timedelta(days=7), now - timedelta(days=14), 'day'
+        return now - timedelta(days=7), now - timedelta(days=14)
 
 
 def format_number(num):
@@ -47,11 +47,11 @@ def calc_change(current, previous):
     return "+0%", True
 
 
-# ============ TOP SONGS (with period growth) ============
+# ============ TOP SONGS ============
 
 @router.get("/top-songs")
 def top_songs(range: str = '7d', limit: int = 10, db: Session = Depends(get_db)):
-    current_start, previous_start, _ = get_range_dates(range)
+    current_start, previous_start = get_range_dates(range)
 
     songs = db.query(models.Song).filter(
         models.Song.is_approved == True
@@ -84,11 +84,11 @@ def top_songs(range: str = '7d', limit: int = 10, db: Session = Depends(get_db))
     return result
 
 
-# ============ TOP ARTISTS (with period growth) ============
+# ============ TOP ARTISTS ============
 
 @router.get("/top-artists")
 def top_artists(range: str = '7d', limit: int = 10, db: Session = Depends(get_db)):
-    current_start, previous_start, _ = get_range_dates(range)
+    current_start, previous_start = get_range_dates(range)
 
     artists = db.query(models.Artist).filter(
         models.Artist.is_approved == True
@@ -125,13 +125,12 @@ def top_artists(range: str = '7d', limit: int = 10, db: Session = Depends(get_db
     return result
 
 
-# ============ OVERVIEW STATS (with period comparison) ============
+# ============ OVERVIEW STATS ============
 
 @router.get("/overview")
 def overview(range: str = '7d', db: Session = Depends(get_db)):
-    current_start, previous_start, _ = get_range_dates(range)
+    current_start, previous_start = get_range_dates(range)
 
-    # Streams
     total_streams = db.query(func.count(models.PlayHistory.id)).filter(
         models.PlayHistory.played_at >= current_start
     ).scalar() or 0
@@ -141,7 +140,6 @@ def overview(range: str = '7d', db: Session = Depends(get_db)):
         models.PlayHistory.played_at < current_start
     ).scalar() or 0
 
-    # Active users
     active_users = db.query(func.count(func.distinct(models.PlayHistory.user_id))).filter(
         models.PlayHistory.played_at >= current_start
     ).scalar() or 0
@@ -151,7 +149,6 @@ def overview(range: str = '7d', db: Session = Depends(get_db)):
         models.PlayHistory.played_at < current_start
     ).scalar() or 0
 
-    # Avg listen time
     avg_duration = db.query(func.avg(models.PlayHistory.duration_played)).filter(
         models.PlayHistory.played_at >= current_start
     ).scalar() or 0
@@ -161,7 +158,6 @@ def overview(range: str = '7d', db: Session = Depends(get_db)):
         models.PlayHistory.played_at < current_start
     ).scalar() or 0
 
-    # Engagement rate = (likes + comments) / max(streams, 1) * 100
     likes_count = db.query(func.count(models.Like.id)).filter(
         models.Like.created_at >= current_start
     ).scalar() or 0
@@ -197,7 +193,7 @@ def overview(range: str = '7d', db: Session = Depends(get_db)):
     }
 
 
-# ============ STREAM ACTIVITY CHART DATA ============
+# ============ STREAM ACTIVITY CHART ============
 
 @router.get("/stream-activity")
 def stream_activity(range: str = '7d', db: Session = Depends(get_db)):
