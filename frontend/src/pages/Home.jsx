@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom'
 import api from '../api/axios'
 import songsApi from '../api/songs'
 import artistsApi from '../api/artists'
+import liveApi from '../api/live'
 import { usePlayer } from '../hooks/usePlayer'
 import { useAuth } from '../context/AuthContext'
 import { 
@@ -53,7 +54,6 @@ const Home = () => {
   const [hoveredSong, setHoveredSong] = useState(null)
   const [hoveredArtist, setHoveredArtist] = useState(null)
 
-  // NEW: For You, Following, Live states
   const [activeFeedTab, setActiveFeedTab] = useState('forYou')
   const [forYouSongs, setForYouSongs] = useState([])
   const [followingSongs, setFollowingSongs] = useState([])
@@ -61,7 +61,6 @@ const Home = () => {
   const [liveArtists, setLiveArtists] = useState([])
   const [feedLoading, setFeedLoading] = useState(false)
 
-  // Quick Access Modal States
   const [activeModal, setActiveModal] = useState(null)
   const [modalData, setModalData] = useState([])
   const [modalLoading, setModalLoading] = useState(false)
@@ -78,43 +77,35 @@ const Home = () => {
         let catsData = []
         let errors = []
 
-        // Fetch trending songs
         try {
           const trendingRes = await songsApi.getTrendingSongs(12)
-          console.log('Trending response:', trendingRes.data)
           trendingData = Array.isArray(trendingRes.data) ? trendingRes.data : []
         } catch (e) {
-          console.error('Trending fetch failed:', e.message, e.response?.status, e.response?.data)
+          console.error('Trending fetch failed:', e.message)
           errors.push('trending')
         }
 
-        // Fetch new releases
         try {
           const newReleasesRes = await songsApi.getNewReleases(12)
-          console.log('New releases response:', newReleasesRes.data)
           newReleasesData = Array.isArray(newReleasesRes.data) ? newReleasesRes.data : []
         } catch (e) {
-          console.error('New releases fetch failed:', e.message, e.response?.status, e.response?.data)
+          console.error('New releases fetch failed:', e.message)
           errors.push('newReleases')
         }
 
-        // Fetch featured artists
         try {
           const featuredRes = await artistsApi.getFeaturedArtists(12)
-          console.log('Featured artists response:', featuredRes.data)
           featuredArtistsData = Array.isArray(featuredRes.data) ? featuredRes.data : []
         } catch (e) {
-          console.error('Featured artists fetch failed:', e.message, e.response?.status, e.response?.data)
+          console.error('Featured artists fetch failed:', e.message)
           errors.push('featuredArtists')
         }
 
-        // Fetch categories
         try {
           const catsRes = await api.get('/api/v1/categories')
-          console.log('Categories response:', catsRes.data)
           catsData = Array.isArray(catsRes.data) ? catsRes.data : []
         } catch (e) {
-          console.error('Categories fetch failed:', e.message, e.response?.status, e.response?.data)
+          console.error('Categories fetch failed:', e.message)
           errors.push('categories')
         }
 
@@ -129,7 +120,6 @@ const Home = () => {
           users: featuredArtistsData.reduce((acc, a) => acc + (a.followers_count || 0), 0)
         })
 
-        // Set For You = mix of trending + new releases
         const mixed = [...trendingData, ...newReleasesData].filter((song, index, self) => 
           index === self.findIndex((s) => s.id === song.id)
         )
@@ -148,7 +138,31 @@ const Home = () => {
     fetchData()
   }, [])
 
-  // NEW: Fetch Following feed when tab switched
+  // Fetch real live streams
+  useEffect(() => {
+    const fetchLiveStreams = async () => {
+      try {
+        const res = await liveApi.getActiveStreams(6)
+        const streams = Array.isArray(res.data) ? res.data : []
+        const mapped = streams.map(stream => ({
+          id: stream.id,
+          stage_name: stream.artist?.stage_name || 'Unknown Artist',
+          image_url: stream.artist?.image_url || '/default-avatar.jpg',
+          viewers: stream.current_viewers || 0,
+          title: stream.title,
+          isLive: true
+        }))
+        setLiveArtists(mapped)
+      } catch (err) {
+        console.error('Live streams fetch failed:', err)
+        setLiveArtists([])
+      }
+    }
+    fetchLiveStreams()
+    const interval = setInterval(fetchLiveStreams, 30000)
+    return () => clearInterval(interval)
+  }, [])
+
   useEffect(() => {
     if (activeFeedTab === 'following' && user) {
       fetchFollowingFeed()
@@ -171,16 +185,6 @@ const Home = () => {
     }
   }
 
-  // NEW: Mock live artists (replace with real API when you build live streaming)
-  useEffect(() => {
-    // Simulate live artists - in production, fetch from /api/v1/live/streams
-    const mockLiveArtists = [
-      { id: 1, stage_name: 'DJ Turkana', image_url: '/default-avatar.jpg', viewers: 1240, title: 'Live Mix Session', isLive: true },
-      { id: 2, stage_name: 'Nakwam Beats', image_url: '/default-avatar.jpg', viewers: 856, title: 'Afrobeats Night', isLive: true },
-    ]
-    setLiveArtists(mockLiveArtists)
-  }, [])
-
   const openModal = async (type) => {
     setActiveModal(type)
     setModalLoading(true)
@@ -194,19 +198,16 @@ const Home = () => {
           return
         }
         const res = await api.get('/api/v1/users/me/history?limit=8')
-        console.log('Recent plays response:', res.data)
         setModalData(Array.isArray(res.data) ? res.data : [])
       } else if (type === 'fresh') {
         const res = await songsApi.getNewReleases(8)
-        console.log('Fresh drops response:', res.data)
         setModalData(Array.isArray(res.data) ? res.data : [])
       } else if (type === 'artists') {
         const res = await artistsApi.getFeaturedArtists(8)
-        console.log('Top artists response:', res.data)
         setModalData(Array.isArray(res.data) ? res.data : [])
       }
     } catch (err) {
-      console.error('Modal fetch failed:', err.message, err.response?.status, err.response?.data)
+      console.error('Modal fetch failed:', err)
       setModalData([])
     } finally {
       setModalLoading(false)
@@ -290,7 +291,6 @@ const Home = () => {
 
   const ModalIcon = getModalIcon()
 
-  // NEW: Feed tab config
   const feedTabs = [
     { id: 'forYou', label: 'For You', icon: Compass },
     { id: 'following', label: 'Following', icon: UserCheck },
@@ -299,7 +299,6 @@ const Home = () => {
   return (
     <div className="space-y-0 pb-10">
       
-      {/* TOP BAR */}
       <div className="px-4 md:px-8 pt-4 pb-2">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
@@ -307,7 +306,7 @@ const Home = () => {
               <span className="w-2 h-2 bg-red-500 rounded-full animate-pulse" />
               <span className="text-xs font-medium text-red-400">Live Now</span>
             </div>
-            <span className="text-xs text-gray-500">1,234 listeners online</span>
+            <span className="text-xs text-gray-500">{liveArtists.length > 0 ? `${liveArtists.reduce((a, b) => a + (b.viewers || 0), 0).toLocaleString()} watching` : '1,234 listeners online'}</span>
           </div>
           <div className="flex items-center gap-4 text-xs text-gray-500">
             <span className="flex items-center gap-1"><Music className="w-3 h-3" /> {stats.songs} songs</span>
@@ -316,7 +315,6 @@ const Home = () => {
         </div>
       </div>
 
-      {/* HERO SECTION */}
       <motion.section 
         ref={heroRef}
         style={{ y: heroY, opacity: heroOpacity }}
@@ -370,7 +368,6 @@ const Home = () => {
         </div>
       </motion.section>
 
-      {/* NEW: GO LIVE SECTION (for artists only) */}
       {user?.role === 'artist' && (
         <section className="px-4 md:px-8 py-4">
           <motion.div
@@ -403,7 +400,6 @@ const Home = () => {
         </section>
       )}
 
-      {/* NEW: LIVE STREAMS SECTION */}
       {liveArtists.length > 0 && (
         <section className="px-4 md:px-8 py-4">
           <div className="flex items-end justify-between mb-4">
@@ -438,26 +434,22 @@ const Home = () => {
                   />
                   <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent" />
                   
-                  {/* Live Badge */}
                   <div className="absolute top-2 left-2 flex items-center gap-1.5 px-2 py-1 bg-red-500 rounded-md">
                     <span className="w-1.5 h-1.5 bg-white rounded-full animate-pulse" />
                     <span className="text-[10px] font-bold text-white uppercase">Live</span>
                   </div>
                   
-                  {/* Viewers */}
                   <div className="absolute top-2 right-2 flex items-center gap-1 px-2 py-1 bg-black/50 backdrop-blur-sm rounded-md">
                     <Users className="w-3 h-3 text-white" />
                     <span className="text-[10px] text-white">{artist.viewers?.toLocaleString()}</span>
                   </div>
                   
-                  {/* Play Button */}
                   <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
                     <div className="w-12 h-12 bg-red-500 rounded-full flex items-center justify-center shadow-lg">
                       <Play className="w-5 h-5 text-white ml-0.5" fill="white" />
                     </div>
                   </div>
                   
-                  {/* Bottom Info */}
                   <div className="absolute bottom-0 left-0 right-0 p-3">
                     <h3 className="font-semibold text-sm text-white truncate">{artist.stage_name}</h3>
                     <p className="text-xs text-gray-300 truncate">{artist.title}</p>
@@ -469,7 +461,6 @@ const Home = () => {
         </section>
       )}
 
-      {/* NEW: FOR YOU / FOLLOWING FEED SECTION */}
       <section className="px-4 md:px-8 py-4">
         <div className="flex items-center gap-2 mb-4">
           {feedTabs.map((tab) => (
@@ -497,7 +488,6 @@ const Home = () => {
           ))}
         </div>
 
-        {/* For You Content */}
         {activeFeedTab === 'forYou' && (
           <motion.div
             initial={{ opacity: 0, y: 10 }}
@@ -545,7 +535,6 @@ const Home = () => {
           </motion.div>
         )}
 
-        {/* Following Content */}
         {activeFeedTab === 'following' && (
           <motion.div
             initial={{ opacity: 0, y: 10 }}
@@ -588,7 +577,6 @@ const Home = () => {
               </div>
             ) : (
               <>
-                {/* Followed Artists Quick Row */}
                 <div className="flex items-center gap-3 mb-6 overflow-x-auto pb-2 scrollbar-hide">
                   {followingList.map((artist) => (
                     <button
@@ -609,7 +597,6 @@ const Home = () => {
                   ))}
                 </div>
 
-                {/* Following Songs Grid */}
                 <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-3">
                   {followingSongs.map((song, i) => (
                     <motion.div
@@ -638,7 +625,6 @@ const Home = () => {
                             </motion.div>
                           )}
                         </AnimatePresence>
-                        {/* New Badge */}
                         <div className="absolute top-1.5 left-1.5 px-1.5 py-0.5 bg-primary/80 backdrop-blur-sm rounded text-[9px] font-bold text-white uppercase">
                           New
                         </div>
@@ -654,7 +640,6 @@ const Home = () => {
         )}
       </section>
 
-      {/* TRENDING SECTION */}
       <section className="px-4 md:px-8 py-4">
         <div className="flex items-end justify-between mb-4">
           <div className="flex items-center gap-2">
@@ -709,7 +694,6 @@ const Home = () => {
         )}
       </section>
 
-      {/* FEATURED ARTISTS */}
       <section className="px-4 md:px-8 py-4">
         <div className="flex items-end justify-between mb-4">
           <div className="flex items-center gap-2">
@@ -771,7 +755,6 @@ const Home = () => {
         )}
       </section>
 
-      {/* NEW RELEASES */}
       <section className="px-4 md:px-8 py-4">
         <div className="flex items-end justify-between mb-4">
           <div className="flex items-center gap-2">
@@ -818,7 +801,6 @@ const Home = () => {
         )}
       </section>
 
-      {/* CATEGORIES */}
       <section className="px-4 md:px-8 py-4">
         <div className="flex items-end justify-between mb-4">
           <div className="flex items-center gap-2">
@@ -855,7 +837,6 @@ const Home = () => {
         )}
       </section>
 
-      {/* BOTTOM CTA */}
       <section className="px-4 md:px-8 pt-4 pb-6">
         <div className="relative rounded-2xl overflow-hidden bg-gradient-to-r from-primary/20 via-secondary/20 to-primary/20 p-6 md:p-8">
           <div className="absolute top-0 right-0 w-64 h-64 bg-primary/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
@@ -906,7 +887,6 @@ const Home = () => {
         </div>
       </section>
 
-      {/* FOOTER MINI */}
       <div className="px-4 md:px-8 pb-4">
         <div className="flex flex-col md:flex-row items-center justify-between gap-4 py-4 border-t border-white/5 text-xs text-gray-600">
           <div className="flex items-center gap-4">
@@ -920,7 +900,6 @@ const Home = () => {
         </div>
       </div>
 
-      {/* QUICK ACCESS MODALS */}
       <AnimatePresence>
         {activeModal && (
           <motion.div
@@ -937,7 +916,6 @@ const Home = () => {
               onClick={(e) => e.stopPropagation()}
               className="bg-[#12121a] border border-white/[0.08] rounded-2xl w-full max-w-2xl max-h-[80vh] overflow-hidden flex flex-col"
             >
-              {/* Modal Header */}
               <div className="flex items-center justify-between p-5 border-b border-white/[0.08]">
                 <div className="flex items-center gap-3">
                   <div className="w-9 h-9 rounded-xl bg-white/[0.05] flex items-center justify-center">
@@ -953,7 +931,6 @@ const Home = () => {
                 </button>
               </div>
 
-              {/* Modal Body */}
               <div className="p-5 overflow-y-auto">
                 {modalLoading ? (
                   <div className="flex items-center justify-center py-12">

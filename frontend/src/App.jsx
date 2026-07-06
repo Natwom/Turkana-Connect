@@ -14,8 +14,10 @@ import Categories from './pages/Categories'
 import Settings from './pages/Settings'
 import BecomeArtist from './pages/BecomeArtist'
 import UploadSong from './pages/UploadSong'
+import GoLive from './pages/GoLive'
+import LiveStream from './pages/LiveStream'
+import LiveStreams from './pages/LiveStreams'
 
-// NEW: Routes artists to their dashboard, normal users to standard profile
 function ProfileRouter() {
   const { user } = useAuth()
   if (user?.role === 'artist' || user?.role === 'admin') {
@@ -38,6 +40,9 @@ function App() {
         <Route path="settings" element={<Settings />} />
         <Route path="upload-song" element={<UploadSong />} />
         <Route path="become-artist" element={<BecomeArtist />} />
+        <Route path="go-live" element={<GoLive />} />
+        <Route path="live" element={<LiveStreams />} />
+        <Route path="live/:id" element={<LiveStream />} />
       </Route>
       <Route path="/login" element={<Login />} />
       <Route path="/register" element={<Register />} />
