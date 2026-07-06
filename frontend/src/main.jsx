@@ -1,6 +1,6 @@
 import React from 'react'
 import ReactDOM from 'react-dom/client'
-import { BrowserRouter } from 'react-router-dom'
+import { HashRouter } from 'react-router-dom'
 import { AuthProvider } from './context/AuthContext'
 import { SettingsProvider } from './context/SettingsContext'
 import { PlayerProvider } from './context/PlayerContext'
@@ -9,7 +9,7 @@ import './index.css'
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
-    <BrowserRouter>
+    <HashRouter>
       <SettingsProvider>
         <AuthProvider>
           <PlayerProvider>
@@ -17,6 +17,6 @@ ReactDOM.createRoot(document.getElementById('root')).render(
           </PlayerProvider>
         </AuthProvider>
       </SettingsProvider>
-    </BrowserRouter>
+    </HashRouter>
   </React.StrictMode>
 )
