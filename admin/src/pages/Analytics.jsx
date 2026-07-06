@@ -1,42 +1,44 @@
 import { useEffect, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { 
-  BarChart3, 
   TrendingUp, 
   Users, 
   Music, 
-  Activity,
   Headphones,
   Heart,
-  Play,
   ArrowUpRight,
   ArrowDownRight,
-  Calendar,
   Filter,
   Download,
   MoreHorizontal,
-  Disc,
   Crown,
   Clock
 } from 'lucide-react'
-import axios from 'axios'
+import api from '../api/axios'
 
 const Analytics = () => {
   const [topSongs, setTopSongs] = useState([])
   const [topArtists, setTopArtists] = useState([])
+  const [overview, setOverview] = useState(null)
+  const [streamActivity, setStreamActivity] = useState([])
   const [loading, setLoading] = useState(true)
   const [timeRange, setTimeRange] = useState('7d')
   const [activeTab, setActiveTab] = useState('songs')
 
   useEffect(() => {
     const fetchData = async () => {
+      setLoading(true)
       try {
-        const [songsRes, artistsRes] = await Promise.all([
-          axios.get(`/api/v1/analytics/top-songs?range=${timeRange}`),
-          axios.get(`/api/v1/analytics/top-artists?range=${timeRange}`)
+        const [songsRes, artistsRes, overviewRes, activityRes] = await Promise.all([
+          api.get(`/api/v1/analytics/top-songs?range=${timeRange}`),
+          api.get(`/api/v1/analytics/top-artists?range=${timeRange}`),
+          api.get(`/api/v1/analytics/overview?range=${timeRange}`),
+          api.get(`/api/v1/analytics/stream-activity?range=${timeRange}`)
         ])
         setTopSongs(songsRes.data)
         setTopArtists(artistsRes.data)
+        setOverview(overviewRes.data)
+        setStreamActivity(activityRes.data)
       } catch (err) {
         console.error('Failed to fetch analytics:', err)
       } finally {
@@ -46,17 +48,6 @@ const Analytics = () => {
     fetchData()
   }, [timeRange])
 
-  // Mock chart data - replace with API data
-  const chartData = [
-    { day: 'Mon', streams: 1200, users: 340 },
-    { day: 'Tue', streams: 1900, users: 420 },
-    { day: 'Wed', streams: 1600, users: 380 },
-    { day: 'Thu', streams: 2400, users: 560 },
-    { day: 'Fri', streams: 2800, users: 640 },
-    { day: 'Sat', streams: 3200, users: 780 },
-    { day: 'Sun', streams: 2100, users: 520 },
-  ]
-
   const timeRanges = [
     { value: '24h', label: '24 Hours' },
     { value: '7d', label: '7 Days' },
@@ -65,7 +56,16 @@ const Analytics = () => {
     { value: '1y', label: '1 Year' },
   ]
 
-  const maxStreams = Math.max(...chartData.map(d => d.streams))
+  const maxStreams = streamActivity.length > 0 
+    ? Math.max(...streamActivity.map(d => d.streams)) 
+    : 1
+
+  const overviewStats = overview ? [
+    { label: 'Total Streams', ...overview.total_streams, icon: Headphones, color: 'from-violet-500 to-fuchsia-500' },
+    { label: 'Active Users', ...overview.active_users, icon: Users, color: 'from-blue-500 to-cyan-500' },
+    { label: 'Avg. Listen Time', ...overview.avg_listen_time, icon: Clock, color: 'from-emerald-500 to-teal-500' },
+    { label: 'Engagement Rate', ...overview.engagement_rate, icon: Heart, color: 'from-rose-500 to-pink-500' },
+  ] : []
 
   if (loading) {
     return (
@@ -125,12 +125,7 @@ const Analytics = () => {
 
       {/* Overview Stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        {[
-          { label: 'Total Streams', value: '15.2K', change: '+12%', up: true, icon: Headphones, color: 'from-violet-500 to-fuchsia-500' },
-          { label: 'Active Users', value: '3.4K', change: '+8%', up: true, icon: Users, color: 'from-blue-500 to-cyan-500' },
-          { label: 'Avg. Listen Time', value: '4:32', change: '+5%', up: true, icon: Clock, color: 'from-emerald-500 to-teal-500' },
-          { label: 'Engagement Rate', value: '68%', change: '-2%', up: false, icon: Heart, color: 'from-rose-500 to-pink-500' },
-        ].map((stat, i) => (
+        {overviewStats.map((stat, i) => (
           <motion.div
             key={stat.label}
             initial={{ opacity: 0, y: 20 }}
@@ -171,7 +166,7 @@ const Analytics = () => {
         <div className="flex items-center justify-between mb-6">
           <div>
             <h2 className="text-lg font-semibold text-white mb-1">Stream Activity</h2>
-            <p className="text-sm text-gray-500">Daily streams and active users</p>
+            <p className="text-sm text-gray-500">Streams and active users over time</p>
           </div>
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-2">
@@ -186,14 +181,14 @@ const Analytics = () => {
         </div>
 
         <div className="h-64 flex items-end justify-between gap-4 px-2">
-          {chartData.map((data, i) => (
-            <div key={data.day} className="flex-1 flex flex-col items-center gap-2">
+          {streamActivity.map((data, i) => (
+            <div key={data.label + i} className="flex-1 flex flex-col items-center gap-2">
               <div className="w-full flex items-end justify-center gap-1 h-48">
                 {/* Users bar */}
                 <motion.div
                   initial={{ height: 0 }}
-                  animate={{ height: `${(data.users / maxStreams) * 100}%` }}
-                  transition={{ delay: 0.3 + i * 0.1, duration: 0.5 }}
+                  animate={{ height: `${maxStreams > 0 ? (data.users / maxStreams) * 100 : 0}%` }}
+                  transition={{ delay: 0.3 + i * 0.05, duration: 0.5 }}
                   className="w-3 bg-blue-500/30 rounded-t-md hover:bg-blue-500/50 transition-colors relative group"
                 >
                   <div className="absolute -top-8 left-1/2 -translate-x-1/2 text-xs text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap bg-[#1a1a2e] px-2 py-1 rounded-md border border-white/[0.08]">
@@ -203,8 +198,8 @@ const Analytics = () => {
                 {/* Streams bar */}
                 <motion.div
                   initial={{ height: 0 }}
-                  animate={{ height: `${(data.streams / maxStreams) * 100}%` }}
-                  transition={{ delay: 0.3 + i * 0.1, duration: 0.5 }}
+                  animate={{ height: `${maxStreams > 0 ? (data.streams / maxStreams) * 100 : 0}%` }}
+                  transition={{ delay: 0.3 + i * 0.05, duration: 0.5 }}
                   className="w-5 bg-gradient-to-t from-fuchsia-600/20 to-fuchsia-500/60 rounded-t-md hover:from-fuchsia-600/40 hover:to-fuchsia-500/80 transition-all relative group"
                 >
                   <div className="absolute -top-8 left-1/2 -translate-x-1/2 text-xs text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap bg-[#1a1a2e] px-2 py-1 rounded-md border border-white/[0.08]">
@@ -212,9 +207,14 @@ const Analytics = () => {
                   </div>
                 </motion.div>
               </div>
-              <span className="text-xs text-gray-600">{data.day}</span>
+              <span className="text-xs text-gray-600">{data.label}</span>
             </div>
           ))}
+          {streamActivity.length === 0 && (
+            <div className="w-full h-full flex items-center justify-center text-gray-500 text-sm">
+              No activity data for this period
+            </div>
+          )}
         </div>
       </motion.div>
 
@@ -332,8 +332,10 @@ const Analytics = () => {
                       <p className="text-xs text-gray-600">likes</p>
                     </div>
                     <div className="text-right hidden md:block">
-                      <div className="flex items-center gap-1.5 text-sm text-emerald-400">
-                        <ArrowUpRight className="w-3.5 h-3.5" />
+                      <div className={`flex items-center gap-1.5 text-sm ${
+                        song.growth?.startsWith('-') ? 'text-red-400' : 'text-emerald-400'
+                      }`}>
+                        {song.growth?.startsWith('-') ? <ArrowDownRight className="w-3.5 h-3.5" /> : <ArrowUpRight className="w-3.5 h-3.5" />}
                         {song.growth || '+0%'}
                       </div>
                       <p className="text-xs text-gray-600">vs last period</p>
@@ -443,8 +445,10 @@ const Analytics = () => {
                       <p className="text-xs text-gray-600">followers</p>
                     </div>
                     <div className="text-right hidden md:block">
-                      <div className="flex items-center gap-1.5 text-sm text-emerald-400">
-                        <TrendingUp className="w-3.5 h-3.5" />
+                      <div className={`flex items-center gap-1.5 text-sm ${
+                        artist.growth?.startsWith('-') ? 'text-red-400' : 'text-emerald-400'
+                      }`}>
+                        {artist.growth?.startsWith('-') ? <ArrowDownRight className="w-3.5 h-3.5" /> : <ArrowUpRight className="w-3.5 h-3.5" />}
                         {artist.growth || '+0%'}
                       </div>
                       <p className="text-xs text-gray-600">vs last period</p>
