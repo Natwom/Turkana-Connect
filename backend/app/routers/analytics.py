@@ -50,8 +50,8 @@ def calc_change(current, previous):
 # ============ TOP SONGS ============
 
 @router.get("/top-songs")
-def top_songs(range: str = '7d', limit: int = 10, db: Session = Depends(get_db)):
-    current_start, previous_start = get_range_dates(range)
+def top_songs(time_range: str = '7d', limit: int = 10, db: Session = Depends(get_db)):
+    current_start, previous_start = get_range_dates(time_range)
 
     songs = db.query(models.Song).filter(
         models.Song.is_approved == True
@@ -87,8 +87,8 @@ def top_songs(range: str = '7d', limit: int = 10, db: Session = Depends(get_db))
 # ============ TOP ARTISTS ============
 
 @router.get("/top-artists")
-def top_artists(range: str = '7d', limit: int = 10, db: Session = Depends(get_db)):
-    current_start, previous_start = get_range_dates(range)
+def top_artists(time_range: str = '7d', limit: int = 10, db: Session = Depends(get_db)):
+    current_start, previous_start = get_range_dates(time_range)
 
     artists = db.query(models.Artist).filter(
         models.Artist.is_approved == True
@@ -128,8 +128,8 @@ def top_artists(range: str = '7d', limit: int = 10, db: Session = Depends(get_db
 # ============ OVERVIEW STATS ============
 
 @router.get("/overview")
-def overview(range: str = '7d', db: Session = Depends(get_db)):
-    current_start, previous_start = get_range_dates(range)
+def overview(time_range: str = '7d', db: Session = Depends(get_db)):
+    current_start, previous_start = get_range_dates(time_range)
 
     total_streams = db.query(func.count(models.PlayHistory.id)).filter(
         models.PlayHistory.played_at >= current_start
@@ -196,10 +196,10 @@ def overview(range: str = '7d', db: Session = Depends(get_db)):
 # ============ STREAM ACTIVITY CHART ============
 
 @router.get("/stream-activity")
-def stream_activity(range: str = '7d', db: Session = Depends(get_db)):
+def stream_activity(time_range: str = '7d', db: Session = Depends(get_db)):
     now = datetime.utcnow()
 
-    if range == '24h':
+    if time_range == '24h':
         points = []
         for i in range(23, -1, -1):
             hour_start = now - timedelta(hours=i + 1)
@@ -215,7 +215,7 @@ def stream_activity(range: str = '7d', db: Session = Depends(get_db)):
             points.append({"label": hour_start.strftime("%H:%M"), "streams": streams, "users": users})
         return points
 
-    elif range == '7d':
+    elif time_range == '7d':
         points = []
         for i in range(6, -1, -1):
             day_start = now - timedelta(days=i + 1)
@@ -231,7 +231,7 @@ def stream_activity(range: str = '7d', db: Session = Depends(get_db)):
             points.append({"label": day_start.strftime("%a"), "streams": streams, "users": users})
         return points
 
-    elif range == '30d':
+    elif time_range == '30d':
         points = []
         for i in range(29, -1, -1):
             day_start = now - timedelta(days=i + 1)
@@ -247,7 +247,7 @@ def stream_activity(range: str = '7d', db: Session = Depends(get_db)):
             points.append({"label": day_start.strftime("%d"), "streams": streams, "users": users})
         return points
 
-    elif range == '90d':
+    elif time_range == '90d':
         points = []
         for i in range(11, -1, -1):
             week_start = now - timedelta(weeks=i + 1)
@@ -263,7 +263,7 @@ def stream_activity(range: str = '7d', db: Session = Depends(get_db)):
             points.append({"label": f"W{12 - i}", "streams": streams, "users": users})
         return points
 
-    elif range == '1y':
+    elif time_range == '1y':
         points = []
         for i in range(11, -1, -1):
             end = now - timedelta(days=i * 30)

@@ -31,12 +31,12 @@ const Analytics = () => {
       setLoading(true)
       setError(null)
       try {
-        console.log('🔍 Fetching analytics with range:', timeRange)
+        console.log('🔍 Fetching analytics with time_range:', timeRange)
         const [songsRes, artistsRes, overviewRes, activityRes] = await Promise.all([
-          api.get(`/api/v1/analytics/top-songs?range=${timeRange}`),
-          api.get(`/api/v1/analytics/top-artists?range=${timeRange}`),
-          api.get(`/api/v1/analytics/overview?range=${timeRange}`),
-          api.get(`/api/v1/analytics/stream-activity?range=${timeRange}`)
+          api.get(`/api/v1/analytics/top-songs?time_range=${timeRange}`),
+          api.get(`/api/v1/analytics/top-artists?time_range=${timeRange}`),
+          api.get(`/api/v1/analytics/overview?time_range=${timeRange}`),
+          api.get(`/api/v1/analytics/stream-activity?time_range=${timeRange}`)
         ])
         console.log('✅ Top Songs:', songsRes.data)
         console.log('✅ Top Artists:', artistsRes.data)
@@ -100,7 +100,7 @@ const Analytics = () => {
           <p className="font-medium">Error loading data:</p>
           <p>{error}</p>
           <button 
-            onClick={() => setTimeRange(prev => prev)} 
+            onClick={() => setTimeRange(prev => prev + ' ')} 
             className="mt-2 text-red-300 hover:text-red-200 underline"
           >
             Retry
