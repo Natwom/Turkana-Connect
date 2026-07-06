@@ -232,7 +232,7 @@ def dashboard_stats(
     )
 
 
-# ============ EXISTING ROUTES (unchanged) ============
+# ============ ARTISTS ============
 
 @router.get("/artists", response_model=List[schemas.ArtistResponse])
 def list_all_artists(
@@ -283,9 +283,50 @@ def reject_artist(artist_id: int, current_user: models.User = Depends(auth.requi
     db.commit()
     return {"message": "Artist rejected and profile deleted"}
 
+
+# ============ SONGS (ADMIN) ============
+
+# ← NEW: Dedicated admin endpoint to list ALL songs with optional status filter
+@router.get("/songs", response_model=List[schemas.SongResponse])
+def list_admin_songs(
+    status: Optional[str] = None,  # "pending", "approved", or None for all
+    skip: int = 0,
+    limit: int = 100,
+    current_user: models.User = Depends(auth.require_admin),
+    db: Session = Depends(get_db)
+):
+    query = db.query(models.Song)
+    
+    if status == "pending":
+        query = query.filter(models.Song.is_approved == False)
+    elif status == "approved":
+        query = query.filter(models.Song.is_approved == True)
+    # If no status filter, return ALL songs (both pending and approved)
+    
+    songs = query.order_by(models.Song.created_at.desc()).offset(skip).limit(limit).all()
+    
+    # Enrich with artist_name for frontend display
+    result = []
+    for song in songs:
+        song_data = schemas.SongResponse.model_validate(song).model_dump()
+        if song.artist:
+            song_data["artist_name"] = song.artist.stage_name
+        result.append(song_data)
+    
+    return result
+
 @router.get("/pending-songs", response_model=List[schemas.SongResponse])
 def pending_songs(current_user: models.User = Depends(auth.require_admin), db: Session = Depends(get_db)):
-    return db.query(models.Song).filter(models.Song.is_approved == False).all()
+    songs = db.query(models.Song).filter(models.Song.is_approved == False).order_by(models.Song.created_at.desc()).all()
+    
+    result = []
+    for song in songs:
+        song_data = schemas.SongResponse.model_validate(song).model_dump()
+        if song.artist:
+            song_data["artist_name"] = song.artist.stage_name
+        result.append(song_data)
+    
+    return result
 
 @router.post("/songs/{song_id}/approve")
 def approve_song(song_id: int, current_user: models.User = Depends(auth.require_admin), db: Session = Depends(get_db)):
@@ -327,6 +368,9 @@ def delete_song(
     db.commit()
     return {"message": "Song deleted"}
 
+
+# ============ USERS ============
+
 @router.get("/users", response_model=List[schemas.UserResponse])
 def list_users(
     skip: int = 0,
@@ -346,6 +390,9 @@ def delete_user(user_id: int, current_user: models.User = Depends(auth.require_a
     db.delete(user)
     db.commit()
     return {"message": "User deleted"}
+
+
+# ============ REPORTS & LOGS ============
 
 @router.get("/reports", response_model=List[schemas.ReportResponse])
 def list_reports(current_user: models.User = Depends(auth.require_admin), db: Session = Depends(get_db)):

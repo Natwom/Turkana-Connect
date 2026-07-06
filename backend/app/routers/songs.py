@@ -19,9 +19,14 @@ def list_songs(
     category: Optional[str] = None,
     artist_id: Optional[int] = None,
     search: Optional[str] = None,
+    approved_only: Optional[bool] = True,  # ← FIXED: Added param, defaults to True for public safety
     db: Session = Depends(get_db)
 ):
-    query = db.query(models.Song).filter(models.Song.is_approved == True)
+    # ← FIXED: Only filter by approval when approved_only is True (public requests)
+    # When approved_only=False (admin), return ALL songs including pending
+    query = db.query(models.Song)
+    if approved_only:
+        query = query.filter(models.Song.is_approved == True)
     
     if category_id:
         query = query.filter(models.Song.category_id == category_id)

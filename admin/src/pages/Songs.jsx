@@ -22,7 +22,7 @@ import {
   Disc,
   Volume2
 } from 'lucide-react'
-import api from '../api/axios'  // ← FIXED: Use configured API instance, not raw axios
+import api from '../api/axios'
 
 const Songs = () => {
   const [songs, setSongs] = useState([])
@@ -38,16 +38,17 @@ const Songs = () => {
     fetchSongs()
   }, [])
 
+  // ← FIXED: Use dedicated admin endpoint instead of public songs endpoint
   const fetchSongs = async () => {
     try {
       setRefreshing(true)
-      // Fetch all songs — backend must support approved_only param, or use admin endpoint
-      const res = await api.get('/api/v1/songs?limit=100&approved_only=false')
+      // Use admin endpoint that returns ALL songs (pending + approved)
+      const res = await api.get('/api/v1/admin/songs?limit=100')
       setSongs(res.data)
     } catch (err) {
       console.error('Failed to fetch songs:', err)
       if (err.response?.status === 404) {
-        console.error('Endpoint not found — check backend songs router')
+        console.error('Admin songs endpoint not found — check backend admin.py')
       }
     } finally {
       setLoading(false)
@@ -68,7 +69,6 @@ const Songs = () => {
   const handleDelete = async (id) => {
     if (!window.confirm('Are you sure you want to delete this song?')) return
     try {
-      // NOTE: This endpoint must exist in your backend admin.py
       await api.delete(`/api/v1/admin/songs/${id}`)
       fetchSongs()
     } catch (err) {
