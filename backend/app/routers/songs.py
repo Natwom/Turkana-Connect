@@ -5,7 +5,7 @@ from typing import Optional, List
 from datetime import datetime, timedelta
 from app.database import get_db
 from app import models, schemas, auth
-from app.dependencies import save_upload_file
+from app.dependencies import save_upload_file, delete_upload_file
 from app.services.notification import NotificationService
 
 router = APIRouter(prefix="/songs", tags=["Songs"])
@@ -44,7 +44,6 @@ def list_songs(
             )
         )
     
-    # Sorting
     if sort == "trending":
         query = query.order_by(desc(models.Song.play_count), desc(models.Song.likes_count))
     elif sort == "newest":
@@ -56,7 +55,6 @@ def list_songs(
     
     songs = query.offset(skip).limit(limit).all()
     
-    # Enrich with artist_name
     result = []
     for song in songs:
         song_data = schemas.SongResponse.model_validate(song).model_dump()
@@ -85,7 +83,6 @@ def record_play(
     
     song.play_count += 1
     
-    # Record in play history
     play_history = models.PlayHistory(
         user_id=current_user.id,
         song_id=song_id,
@@ -94,7 +91,6 @@ def record_play(
     db.add(play_history)
     db.commit()
     
-    # Update artist total streams
     if song.artist:
         song.artist.total_streams = db.query(func.sum(models.Song.play_count)).filter(
             models.Song.artist_id == song.artist_id
@@ -123,32 +119,44 @@ async def create_song(
     current_user: models.User = Depends(auth.require_artist),
     db: Session = Depends(get_db)
 ):
-    # If artist_id not provided, use current user's artist profile
+    # Resolve artist_id
     if not artist_id:
         artist = db.query(models.Artist).filter(models.Artist.user_id == current_user.id).first()
         if not artist:
             raise HTTPException(400, "You must create an artist profile first")
         artist_id = artist.id
     
-    # Verify the artist belongs to current user
+    # Verify ownership
     artist = db.query(models.Artist).filter(models.Artist.id == artist_id).first()
     if not artist or artist.user_id != current_user.id:
         raise HTTPException(403, "You can only upload songs for your own artist profile")
     
-    # Handle audio upload
+    # Defense in depth: verify approval again
+    if not artist.is_approved:
+        raise HTTPException(403, "Your artist profile is pending approval. You cannot upload songs yet.")
+    
+    # Upload files FIRST (before any DB writes)
+    audio_url = None
+    cover_url = None
+    
     try:
         audio_url = await save_upload_file(audio, "audio")
     except Exception as e:
         raise HTTPException(500, f"Audio upload failed: {str(e)}")
     
-    # Handle cover upload
-    cover_url = None
     if cover:
         try:
             cover_url = await save_upload_file(cover, "covers")
         except Exception as e:
+            # Clean up audio if cover fails
+            if audio_url:
+                try:
+                    await delete_upload_file(audio_url)
+                except:
+                    pass
             raise HTTPException(500, f"Cover upload failed: {str(e)}")
     
+    # Only create DB record after all uploads succeed
     db_song = models.Song(
         title=title,
         artist_id=artist_id,
@@ -158,13 +166,32 @@ async def create_song(
         cover_url=cover_url,
         lyrics=lyrics,
         is_explicit=is_explicit,
-        is_approved=False  # Requires admin approval
+        is_approved=False,
+        duration=0
     )
-    db.add(db_song)
-    db.commit()
-    db.refresh(db_song)
     
-    # Notify admins
-    NotificationService.create_song_upload_notification(db, db_song, current_user)
+    try:
+        db.add(db_song)
+        db.commit()
+        db.refresh(db_song)
+    except Exception as e:
+        # Clean up files if DB fails
+        if audio_url:
+            try:
+                await delete_upload_file(audio_url)
+            except:
+                pass
+        if cover_url:
+            try:
+                await delete_upload_file(cover_url)
+            except:
+                pass
+        raise HTTPException(500, f"Failed to save song: {str(e)}")
+    
+    # Notify admins (non-critical)
+    try:
+        NotificationService.create_song_upload_notification(db, db_song, current_user)
+    except Exception as e:
+        print(f"Notification failed: {e}")
     
     return db_song

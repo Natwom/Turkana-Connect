@@ -22,7 +22,6 @@ def list_artists(skip: int = 0, limit: int = 20, db: Session = Depends(get_db)):
 
 @router.get("/featured", response_model=List[schemas.ArtistResponse])
 def get_featured_artists(limit: int = 12, db: Session = Depends(get_db)):
-    """Get featured artists: verified first, then by followers and streams"""
     try:
         return db.query(models.Artist).filter(
             models.Artist.is_approved == True
@@ -37,20 +36,16 @@ def get_featured_artists(limit: int = 12, db: Session = Depends(get_db)):
         print(traceback.format_exc())
         raise HTTPException(status_code=500, detail=f"Server error: {str(e)}")
 
-# ============ NEW: FOLLOWING FEED ============
 @router.get("/following/feed", response_model=List[schemas.SongResponse])
 def get_following_feed(
     limit: int = 20,
     current_user: models.User = Depends(auth.get_current_active_user),
     db: Session = Depends(get_db)
 ):
-    """Get latest songs from artists the user follows"""
-    # Get followed artist IDs
     followed_ids = db.query(models.Follow.artist_id).filter(
         models.Follow.follower_id == current_user.id
     ).subquery()
     
-    # Get their latest approved songs
     songs = db.query(models.Song).filter(
         models.Song.artist_id.in_(followed_ids),
         models.Song.is_approved == True
@@ -58,7 +53,6 @@ def get_following_feed(
         desc(models.Song.created_at)
     ).limit(limit).all()
     
-    # Enrich with artist_name
     result = []
     for song in songs:
         song_data = schemas.SongResponse.model_validate(song).model_dump()
@@ -73,7 +67,6 @@ def get_following_list(
     current_user: models.User = Depends(auth.get_current_active_user),
     db: Session = Depends(get_db)
 ):
-    """Get list of artists the user follows"""
     follows = db.query(models.Follow).filter(
         models.Follow.follower_id == current_user.id
     ).all()
@@ -150,7 +143,7 @@ async def create_artist(
         db.rollback()
         raise HTTPException(500, f"Failed to create artist: {str(e)}")
 
-# ============ ARTIST OWN PROFILE / DASHBOARD ============
+# ============ FIXED: Artist dashboard only shows APPROVED songs in public list ============
 
 @router.get("/me", response_model=schemas.ArtistDashboard)
 def get_my_artist_profile(
@@ -184,7 +177,7 @@ def get_my_artist_profile(
         models.Song.is_approved == False
     ).scalar() or 0
     
-    # Monthly listeners = unique users who played any of this artist's songs in last 30 days
+    # Monthly listeners
     song_ids = [s.id for s in artist.songs]
     monthly_listeners = 0
     if song_ids:
@@ -193,9 +186,12 @@ def get_my_artist_profile(
             models.PlayHistory.played_at >= datetime.utcnow() - timedelta(days=30)
         ).scalar() or 0
     
-    # Build response manually so extra stats fields are included
+    # FIXED: Only include approved songs in the public-facing songs list
+    # Pending songs are shown separately via pending_songs count
+    approved_songs = [s for s in artist.songs if s.is_approved]
+    
     artist_data = schemas.ArtistResponse.model_validate(artist).model_dump()
-    artist_data["songs"] = [schemas.SongResponse.model_validate(s).model_dump() for s in artist.songs]
+    artist_data["songs"] = [schemas.SongResponse.model_validate(s).model_dump() for s in approved_songs]
     artist_data["albums"] = [schemas.AlbumResponse.model_validate(a).model_dump() for a in artist.albums]
     artist_data["total_songs"] = total_songs
     artist_data["total_albums"] = total_albums
@@ -217,7 +213,6 @@ async def update_my_artist_profile(
     current_user: models.User = Depends(auth.require_artist),
     db: Session = Depends(get_db)
 ):
-    """Update the logged-in artist's profile info"""
     artist = db.query(models.Artist).filter(models.Artist.user_id == current_user.id).first()
     if not artist:
         raise HTTPException(404, "Artist profile not found")
@@ -249,12 +244,10 @@ def get_my_artist_stats(
     current_user: models.User = Depends(auth.require_artist),
     db: Session = Depends(get_db)
 ):
-    """Get detailed analytics for the artist's dashboard charts"""
     artist = db.query(models.Artist).filter(models.Artist.user_id == current_user.id).first()
     if not artist:
         raise HTTPException(404, "Artist profile not found")
     
-    # Streams per song (top 10)
     top_songs = db.query(
         models.Song.id,
         models.Song.title,
@@ -264,7 +257,6 @@ def get_my_artist_stats(
         models.Song.artist_id == artist.id
     ).order_by(desc(models.Song.play_count)).limit(10).all()
     
-    # Streams over last 30 days (daily)
     since = datetime.utcnow() - timedelta(days=30)
     daily_streams = db.query(
         func.date(models.PlayHistory.played_at).label('date'),
@@ -278,14 +270,12 @@ def get_my_artist_stats(
         func.date(models.PlayHistory.played_at)
     ).order_by('date').all()
     
-    # Fill missing days
     data_map = {str(d.date): d.stream_count for d in daily_streams}
     stream_trend = []
     for i in range(30):
         date = (datetime.utcnow() - timedelta(days=29 - i)).strftime('%Y-%m-%d')
         stream_trend.append({"date": date, "streams": data_map.get(date, 0)})
     
-    # Recent followers (last 30 days)
     recent_follows = db.query(func.count(models.Follow.id)).filter(
         models.Follow.artist_id == artist.id,
         models.Follow.created_at >= since
@@ -300,8 +290,6 @@ def get_my_artist_stats(
         "recent_follows": recent_follows,
         "total_followers": artist.followers_count
     }
-
-# ============ PUBLIC ARTIST PROFILE ============
 
 @router.get("/{artist_id}", response_model=schemas.ArtistDetail)
 def get_artist(artist_id: int, db: Session = Depends(get_db)):

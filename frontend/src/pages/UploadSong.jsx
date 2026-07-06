@@ -166,7 +166,7 @@ const UploadSong = () => {
       if (formData.lyrics) data.append('lyrics', formData.lyrics)
       if (coverFile) data.append('cover', coverFile)
 
-      await api.post('/api/v1/songs', data, {
+      const res = await api.post('/api/v1/songs', data, {
         headers: { 'Content-Type': 'multipart/form-data' },
         onUploadProgress: (progressEvent) => {
           const progress = Math.round((progressEvent.loaded * 100) / progressEvent.total)
@@ -177,7 +177,16 @@ const UploadSong = () => {
       setSuccess(true)
       setTimeout(() => navigate('/profile'), 3000)
     } catch (err) {
-      setError(err.response?.data?.detail || 'Failed to upload song. Make sure you are an approved artist.')
+      console.error('Upload failed:', err.response?.status, err.response?.data)
+      // FIXED: Show the exact backend error message
+      const detail = err.response?.data?.detail
+      if (typeof detail === 'string') {
+        setError(detail)
+      } else if (Array.isArray(detail)) {
+        setError(detail.map(d => d.msg || d).join(', '))
+      } else {
+        setError('Failed to upload song. Please try again.')
+      }
     } finally {
       setLoading(false)
     }

@@ -11,9 +11,6 @@ from app import models, schemas
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
-# CRITICAL FIX: tokenUrl must be the FULL absolute path
-# The auth router is mounted at /api/v1 with prefix="/auth"
-# Without the leading /api/v1, Swagger UI "Authorize" breaks
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login")
 
 def verify_password(plain_password, hashed_password):
@@ -79,5 +76,36 @@ def require_role(roles: list):
     return role_checker
 
 require_admin = require_role(["admin"])
-require_artist = require_role(["artist", "admin"])
+
+# ============ FIXED: require_artist checks BOTH role AND artist.is_approved ============
+
+async def require_artist(
+    current_user: models.User = Depends(get_current_active_user),
+    db: Session = Depends(get_db)
+):
+    if current_user.role not in ["artist", "admin"]:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You must be an artist to perform this action"
+        )
+    
+    # Admin bypass — admins don't need artist profile approval
+    if current_user.role == "admin":
+        return current_user
+    
+    # Check that the artist profile exists AND is approved
+    artist = db.query(models.Artist).filter(models.Artist.user_id == current_user.id).first()
+    if not artist:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Artist profile not found. Please create one first."
+        )
+    if not artist.is_approved:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Your artist profile is pending admin approval. You cannot upload songs until approved."
+        )
+    
+    return current_user
+
 require_user = require_role(["user", "artist", "admin"])
