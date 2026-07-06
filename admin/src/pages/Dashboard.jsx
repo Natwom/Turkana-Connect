@@ -4,22 +4,25 @@ import {
   Users, 
   Music, 
   Disc, 
-  Activity, 
-  TrendingUp, 
-  Clock,
+  Headphones,
   ArrowUpRight,
   ArrowDownRight,
-  Headphones,
-  Heart,
-  Play,
   AlertTriangle,
   CheckCircle2,
   MoreHorizontal,
   RefreshCw,
-  Calendar
+  Calendar,
+  Clock,
+  Play,
+  Heart
 } from 'lucide-react'
 import api from '../api/axios'
-import StatCard from '../components/StatCard'
+
+// Icon mapping for dynamic activity icons
+const iconMap = {
+  Users, Music, Disc, AlertTriangle, Headphones, Play, Heart,
+  CheckCircle2, ArrowUpRight, ArrowDownRight, RefreshCw, Calendar, Clock, MoreHorizontal
+}
 
 const Dashboard = () => {
   const [stats, setStats] = useState({ 
@@ -28,7 +31,11 @@ const Dashboard = () => {
     total_songs: 0, 
     total_streams: 0, 
     pending_approvals: 0, 
-    recent_reports: 0 
+    recent_reports: 0,
+    recent_activity: [],
+    top_songs: [],
+    chart_data: [],
+    quick_stats: []
   })
   const [loading, setLoading] = useState(true)
   const [lastUpdated, setLastUpdated] = useState(new Date())
@@ -37,7 +44,7 @@ const Dashboard = () => {
   const fetchStats = async () => {
     try {
       setRefreshing(true)
-      const res = await api.get('/api/v1/admin/dashboard')  // ← FIXED: was /admin/dashboard
+      const res = await api.get('/api/v1/admin/dashboard')
       setStats(res.data)
       setLastUpdated(new Date())
     } catch (err) {
@@ -54,23 +61,12 @@ const Dashboard = () => {
     return () => clearInterval(interval)
   }, [])
 
-  // Mock activity data - replace with API data when available
-  const recentActivity = [
-    { type: 'user', action: 'New user registered', detail: 'john_doe joined', time: '2 min ago', icon: Users, color: 'text-blue-400', bg: 'bg-blue-500/10' },
-    { type: 'song', action: 'Song uploaded', detail: 'Jerusalema by Master KG', time: '5 min ago', icon: Music, color: 'text-fuchsia-400', bg: 'bg-fuchsia-500/10' },
-    { type: 'artist', action: 'Artist approved', detail: 'Zuchu verified', time: '12 min ago', icon: Disc, color: 'text-emerald-400', bg: 'bg-emerald-500/10' },
-    { type: 'report', action: 'Content report', detail: 'Copyright claim on track #4521', time: '1 hr ago', icon: AlertTriangle, color: 'text-amber-400', bg: 'bg-amber-500/10' },
-    { type: 'stream', action: 'Milestone reached', detail: '100K streams on Sukari', time: '2 hr ago', icon: Headphones, color: 'text-violet-400', bg: 'bg-violet-500/10' },
+  const statCards = [
+    { title: 'Total Users', key: 'total_users', icon: Users, color: 'from-blue-500 to-cyan-500', trend: '+12%', trendUp: true, subtitle: 'Active this month' },
+    { title: 'Total Artists', key: 'total_artists', icon: Disc, color: 'from-fuchsia-500 to-pink-500', trend: '+8%', trendUp: true, subtitle: 'Verified creators' },
+    { title: 'Total Songs', key: 'total_songs', icon: Music, color: 'from-violet-500 to-purple-500', trend: '+15%', trendUp: true, subtitle: 'Published tracks' },
+    { title: 'Total Streams', key: 'total_streams', icon: Headphones, color: 'from-emerald-500 to-teal-500', trend: '+23%', trendUp: true, subtitle: 'All time plays' },
   ]
-
-  const topSongs = [
-    { title: 'Jerusalema', artist: 'Master KG', plays: '2.4M', trend: '+12%', cover: 'bg-gradient-to-br from-yellow-500 to-orange-600' },
-    { title: 'Sukari', artist: 'Zuchu', plays: '1.8M', trend: '+8%', cover: 'bg-gradient-to-br from-pink-500 to-rose-600' },
-    { title: 'Tetema', artist: 'Diamond Platnumz', plays: '1.2M', trend: '+15%', cover: 'bg-gradient-to-br from-violet-500 to-purple-600' },
-    { title: 'Amaboko', artist: 'Bruce Melodie', plays: '980K', trend: '+5%', cover: 'bg-gradient-to-br from-blue-500 to-cyan-600' },
-  ]
-
-  const chartData = [35, 55, 40, 70, 65, 85, 60, 90, 75, 100, 80, 95]
 
   if (loading) {
     return (
@@ -117,12 +113,7 @@ const Dashboard = () => {
 
       {/* Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
-        {[
-          { title: 'Total Users', value: stats.total_users, icon: Users, color: 'from-blue-500 to-cyan-500', trend: '+12%', trendUp: true, subtitle: 'Active this month' },
-          { title: 'Total Artists', value: stats.total_artists, icon: Disc, color: 'from-fuchsia-500 to-pink-500', trend: '+8%', trendUp: true, subtitle: 'Verified creators' },
-          { title: 'Total Songs', value: stats.total_songs, icon: Music, color: 'from-violet-500 to-purple-500', trend: '+15%', trendUp: true, subtitle: 'Published tracks' },
-          { title: 'Total Streams', value: stats.total_streams, icon: Headphones, color: 'from-emerald-500 to-teal-500', trend: '+23%', trendUp: true, subtitle: 'All time plays' },
-        ].map((stat, i) => (
+        {statCards.map((stat, i) => (
           <motion.div
             key={stat.title}
             initial={{ opacity: 0, y: 20 }}
@@ -146,7 +137,9 @@ const Dashboard = () => {
             </div>
             
             <div className="relative">
-              <h3 className="text-2xl font-bold text-white mb-1">{stat.value.toLocaleString()}</h3>
+              <h3 className="text-2xl font-bold text-white mb-1">
+                {stats[stat.key]?.toLocaleString?.() ?? 0}
+              </h3>
               <p className="text-sm text-gray-500">{stat.title}</p>
               <p className="text-xs text-gray-600 mt-1">{stat.subtitle}</p>
             </div>
@@ -155,6 +148,7 @@ const Dashboard = () => {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Platform Activity Chart */}
         <motion.div 
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -173,7 +167,7 @@ const Dashboard = () => {
           </div>
           
           <div className="h-64 flex items-end justify-between gap-3 px-2">
-            {chartData.map((height, i) => (
+            {(stats.chart_data?.length > 0 ? stats.chart_data : [35,55,40,70,65,85,60,90,75,100,80,95]).map((height, i) => (
               <motion.div
                 key={i}
                 initial={{ height: 0 }}
@@ -181,7 +175,7 @@ const Dashboard = () => {
                 transition={{ delay: 0.3 + i * 0.05, duration: 0.5 }}
                 className="flex-1 relative group"
               >
-                <div className={`absolute bottom-0 left-0 right-0 rounded-t-lg bg-gradient-to-t from-fuchsia-600/20 to-fuchsia-500/60 transition-all duration-300 group-hover:from-fuchsia-600/40 group-hover:to-fuchsia-500/80`} 
+                <div className="absolute bottom-0 left-0 right-0 rounded-t-lg bg-gradient-to-t from-fuchsia-600/20 to-fuchsia-500/60 transition-all duration-300 group-hover:from-fuchsia-600/40 group-hover:to-fuchsia-500/80" 
                   style={{ height: '100%' }} 
                 />
                 <div className="absolute -top-8 left-1/2 -translate-x-1/2 text-xs text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap bg-[#1a1a2e] px-2 py-1 rounded-md border border-white/[0.08]">
@@ -192,18 +186,20 @@ const Dashboard = () => {
           </div>
           
           <div className="flex justify-between mt-4 text-xs text-gray-600 px-2">
-            {['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'].map(m => (
+            {['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'].map(m => (
               <span key={m}>{m}</span>
             ))}
           </div>
         </motion.div>
 
+        {/* Right Column: Pending Actions + Quick Stats */}
         <motion.div 
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.3 }}
           className="space-y-5"
         >
+          {/* Pending Actions */}
           <div className="bg-[#12121a] border border-white/[0.08] rounded-2xl p-6 hover:border-amber-500/20 transition-all">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-lg font-semibold text-white">Pending Actions</h2>
@@ -255,25 +251,30 @@ const Dashboard = () => {
             </div>
           </div>
 
+          {/* Quick Stats */}
           <div className="bg-[#12121a] border border-white/[0.08] rounded-2xl p-6">
             <h3 className="text-sm font-semibold text-gray-400 mb-4 uppercase tracking-wider">Quick Stats</h3>
             <div className="grid grid-cols-2 gap-4">
-              <div className="text-center p-3 bg-white/[0.03] rounded-xl">
-                <Play className="w-5 h-5 text-fuchsia-400 mx-auto mb-2" />
-                <p className="text-lg font-bold text-white">89%</p>
-                <p className="text-xs text-gray-500">Uptime</p>
-              </div>
-              <div className="text-center p-3 bg-white/[0.03] rounded-xl">
-                <Heart className="w-5 h-5 text-rose-400 mx-auto mb-2" />
-                <p className="text-lg font-bold text-white">4.2K</p>
-                <p className="text-xs text-gray-500">Likes today</p>
-              </div>
+              {(stats.quick_stats?.length > 0 ? stats.quick_stats : [
+                { label: 'Uptime', value: '89%', icon: 'Play', color: 'text-fuchsia-400' },
+                { label: 'Likes today', value: '0', icon: 'Heart', color: 'text-rose-400' }
+              ]).map((qs, i) => {
+                const QsIcon = iconMap[qs.icon] || Play
+                return (
+                  <div key={i} className="text-center p-3 bg-white/[0.03] rounded-xl">
+                    <QsIcon className={`w-5 h-5 ${qs.color} mx-auto mb-2`} />
+                    <p className="text-lg font-bold text-white">{qs.value}</p>
+                    <p className="text-xs text-gray-500">{qs.label}</p>
+                  </div>
+                )
+              })}
             </div>
           </div>
         </motion.div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Recent Activity */}
         <motion.div 
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -289,28 +290,35 @@ const Dashboard = () => {
           
           <div className="space-y-3">
             <AnimatePresence>
-              {recentActivity.map((activity, i) => (
-                <motion.div
-                  key={i}
-                  initial={{ opacity: 0, x: -20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: 0.5 + i * 0.1 }}
-                  className="flex items-center gap-4 p-3 rounded-xl hover:bg-white/[0.03] transition-colors group cursor-pointer"
-                >
-                  <div className={`w-10 h-10 rounded-xl ${activity.bg} flex items-center justify-center`}>
-                    <activity.icon className={`w-5 h-5 ${activity.color}`} />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-white group-hover:text-fuchsia-300 transition-colors">{activity.action}</p>
-                    <p className="text-xs text-gray-500 truncate">{activity.detail}</p>
-                  </div>
-                  <span className="text-xs text-gray-600 whitespace-nowrap">{activity.time}</span>
-                </motion.div>
-              ))}
+              {(stats.recent_activity?.length > 0 ? stats.recent_activity : []).map((activity, i) => {
+                const ActivityIcon = iconMap[activity.icon] || Music
+                return (
+                  <motion.div
+                    key={i}
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: 0.5 + i * 0.1 }}
+                    className="flex items-center gap-4 p-3 rounded-xl hover:bg-white/[0.03] transition-colors group cursor-pointer"
+                  >
+                    <div className={`w-10 h-10 rounded-xl ${activity.bg} flex items-center justify-center`}>
+                      <ActivityIcon className={`w-5 h-5 ${activity.color}`} />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-white group-hover:text-fuchsia-300 transition-colors">{activity.action}</p>
+                      <p className="text-xs text-gray-500 truncate">{activity.detail}</p>
+                    </div>
+                    <span className="text-xs text-gray-600 whitespace-nowrap">{activity.time}</span>
+                  </motion.div>
+                )
+              })}
             </AnimatePresence>
+            {(!stats.recent_activity || stats.recent_activity.length === 0) && (
+              <p className="text-sm text-gray-600 text-center py-8">No recent activity</p>
+            )}
           </div>
         </motion.div>
 
+        {/* Top Songs */}
         <motion.div 
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -325,9 +333,9 @@ const Dashboard = () => {
           </div>
           
           <div className="space-y-3">
-            {topSongs.map((song, i) => (
+            {(stats.top_songs?.length > 0 ? stats.top_songs : []).map((song, i) => (
               <motion.div
-                key={song.title}
+                key={song.title + i}
                 initial={{ opacity: 0, x: 20 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ delay: 0.6 + i * 0.1 }}
@@ -355,10 +363,14 @@ const Dashboard = () => {
                 </motion.button>
               </motion.div>
             ))}
+            {(!stats.top_songs || stats.top_songs.length === 0) && (
+              <p className="text-sm text-gray-600 text-center py-8">No songs yet</p>
+            )}
           </div>
         </motion.div>
       </div>
 
+      {/* Footer */}
       <motion.div 
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
