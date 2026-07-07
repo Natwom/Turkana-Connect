@@ -7,12 +7,13 @@ import artistsApi from '../api/artists'
 import liveApi from '../api/live'
 import { usePlayer } from '../hooks/usePlayer'
 import { useAuth } from '../context/AuthContext'
+import SongCard from '../components/SongCard'
+import SongListItem from '../components/SongListItem'
 import { 
   TrendingUp, Disc, Users, Sparkles, Play, ChevronRight, 
   Headphones, Flame, Clock, Star, ArrowRight, Music, Mic2,
-  Award, Heart, Share2, BarChart3, Eye, X, Upload,
-  Trophy, Zap, History, Radio, UserCheck, Compass,
-  Video, Mic, Bell, Plus
+  Award, Heart, Share2, Eye, X, Video, Radio, UserCheck, Compass,
+  Trophy, Zap, History
 } from 'lucide-react'
 
 const getImageUrl = (path) => {
@@ -35,7 +36,7 @@ const formatTimeAgo = (isoString) => {
 
 const Home = () => {
   const navigate = useNavigate()
-  const player = usePlayer() || {}
+  const { playSong } = usePlayer()
   const { user } = useAuth()
   
   const heroRef = useRef(null)
@@ -51,7 +52,6 @@ const Home = () => {
   const [stats, setStats] = useState({ songs: 0, artists: 0, users: 0 })
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
-  const [hoveredSong, setHoveredSong] = useState(null)
   const [hoveredArtist, setHoveredArtist] = useState(null)
 
   const [activeFeedTab, setActiveFeedTab] = useState('forYou')
@@ -87,7 +87,7 @@ const Home = () => {
 
         try {
           const newReleasesRes = await songsApi.getNewReleases(12)
-          newReleasesData = Array.isArray(newReleasesRes.data) ? newReleasesRes.data : []
+          newReleasesData = Array.isArray(newReleasesRes.data) ? newReleasesData.data : []
         } catch (e) {
           console.error('New releases fetch failed:', e.message)
           errors.push('newReleases')
@@ -138,7 +138,6 @@ const Home = () => {
     fetchData()
   }, [])
 
-  // Fetch real live streams
   useEffect(() => {
     const fetchLiveStreams = async () => {
       try {
@@ -214,34 +213,27 @@ const Home = () => {
     }
   }
 
+  // ← FIXED: All play handlers pass the FULL queue so Next/Prev work
   const handlePlayTrending = (song) => {
-    if (player?.playSong) {
-      player.playSong(song, trending)
-    }
+    playSong(song, trending)
   }
 
   const handlePlayNewRelease = (song) => {
-    if (player?.playSong) {
-      player.playSong(song, newReleases)
-    }
+    playSong(song, newReleases)
   }
 
   const handlePlayFeatured = () => {
-    if (player?.playSong && featuredSong) {
-      player.playSong(featuredSong, trending)
+    if (featuredSong) {
+      playSong(featuredSong, trending)
     }
   }
 
   const handlePlayForYou = (song) => {
-    if (player?.playSong) {
-      player.playSong(song, forYouSongs)
-    }
+    playSong(song, forYouSongs)
   }
 
   const handlePlayFollowing = (song) => {
-    if (player?.playSong) {
-      player.playSong(song, followingSongs)
-    }
+    playSong(song, followingSongs)
   }
 
   const getArtistName = (song) => {
@@ -299,6 +291,7 @@ const Home = () => {
   return (
     <div className="space-y-0 pb-10">
       
+      {/* Top Bar */}
       <div className="px-4 md:px-8 pt-4 pb-2">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
@@ -315,6 +308,7 @@ const Home = () => {
         </div>
       </div>
 
+      {/* Hero / Featured Song */}
       <motion.section 
         ref={heroRef}
         style={{ y: heroY, opacity: heroOpacity }}
@@ -368,6 +362,7 @@ const Home = () => {
         </div>
       </motion.section>
 
+      {/* Artist Live Banner */}
       {user?.role === 'artist' && (
         <section className="px-4 md:px-8 py-4">
           <motion.div
@@ -400,6 +395,7 @@ const Home = () => {
         </section>
       )}
 
+      {/* Live Streams */}
       {liveArtists.length > 0 && (
         <section className="px-4 md:px-8 py-4">
           <div className="flex items-end justify-between mb-4">
@@ -461,6 +457,7 @@ const Home = () => {
         </section>
       )}
 
+      {/* Feed Tabs: For You / Following */}
       <section className="px-4 md:px-8 py-4">
         <div className="flex items-center gap-2 mb-4">
           {feedTabs.map((tab) => (
@@ -488,6 +485,7 @@ const Home = () => {
           ))}
         </div>
 
+        {/* For You Tab */}
         {activeFeedTab === 'forYou' && (
           <motion.div
             initial={{ opacity: 0, y: 10 }}
@@ -499,42 +497,19 @@ const Home = () => {
             ) : (
               <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-3">
                 {forYouSongs.map((song, i) => (
-                  <motion.div
-                    key={song.id}
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: i * 0.03 }}
-                    onMouseEnter={() => setHoveredSong(song.id)}
-                    onMouseLeave={() => setHoveredSong(null)}
-                    onClick={() => handlePlayForYou(song)}
-                    className="group cursor-pointer"
-                  >
-                    <div className="relative aspect-square rounded-xl overflow-hidden mb-2">
-                      <img 
-                        src={getImageUrl(song.cover_url)} 
-                        alt={song.title} 
-                        className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
-                        onError={(e) => { e.target.src = '/default-cover.jpg' }}
-                      />
-                      <AnimatePresence>
-                        {hoveredSong === song.id && (
-                          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-black/50 flex items-center justify-center backdrop-blur-sm">
-                            <div className="w-10 h-10 bg-primary rounded-full flex items-center justify-center">
-                              <Play className="w-4 h-4 fill-current ml-0.5" />
-                            </div>
-                          </motion.div>
-                        )}
-                      </AnimatePresence>
-                    </div>
-                    <h3 className="font-semibold text-sm truncate group-hover:text-primary transition-colors">{song.title}</h3>
-                    <p className="text-xs text-gray-500 truncate">{getArtistName(song)}</p>
-                  </motion.div>
+                  <SongCard 
+                    key={song.id} 
+                    song={song} 
+                    index={i} 
+                    compact={true}
+                  />
                 ))}
               </div>
             )}
           </motion.div>
         )}
 
+        {/* Following Tab */}
         {activeFeedTab === 'following' && (
           <motion.div
             initial={{ opacity: 0, y: 10 }}
@@ -599,39 +574,12 @@ const Home = () => {
 
                 <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-3">
                   {followingSongs.map((song, i) => (
-                    <motion.div
-                      key={song.id}
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: i * 0.03 }}
-                      onMouseEnter={() => setHoveredSong(song.id)}
-                      onMouseLeave={() => setHoveredSong(null)}
-                      onClick={() => handlePlayFollowing(song)}
-                      className="group cursor-pointer"
-                    >
-                      <div className="relative aspect-square rounded-xl overflow-hidden mb-2">
-                        <img 
-                          src={getImageUrl(song.cover_url)} 
-                          alt={song.title} 
-                          className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
-                          onError={(e) => { e.target.src = '/default-cover.jpg' }}
-                        />
-                        <AnimatePresence>
-                          {hoveredSong === song.id && (
-                            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-black/50 flex items-center justify-center backdrop-blur-sm">
-                              <div className="w-10 h-10 bg-primary rounded-full flex items-center justify-center">
-                                <Play className="w-4 h-4 fill-current ml-0.5" />
-                              </div>
-                            </motion.div>
-                          )}
-                        </AnimatePresence>
-                        <div className="absolute top-1.5 left-1.5 px-1.5 py-0.5 bg-primary/80 backdrop-blur-sm rounded text-[9px] font-bold text-white uppercase">
-                          New
-                        </div>
-                      </div>
-                      <h3 className="font-semibold text-sm truncate group-hover:text-primary transition-colors">{song.title}</h3>
-                      <p className="text-xs text-gray-500 truncate">{getArtistName(song)}</p>
-                    </motion.div>
+                    <SongCard 
+                      key={song.id} 
+                      song={song} 
+                      index={i} 
+                      compact={true}
+                    />
                   ))}
                 </div>
               </>
@@ -640,6 +588,7 @@ const Home = () => {
         )}
       </section>
 
+      {/* Trending Now */}
       <section className="px-4 md:px-8 py-4">
         <div className="flex items-end justify-between mb-4">
           <div className="flex items-center gap-2">
@@ -656,44 +605,19 @@ const Home = () => {
         ) : (
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-3">
             {trending.map((song, i) => (
-              <motion.div
-                key={song.id}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: i * 0.05 }}
-                onMouseEnter={() => setHoveredSong(song.id)}
-                onMouseLeave={() => setHoveredSong(null)}
-                onClick={() => handlePlayTrending(song)}
-                className="group cursor-pointer"
-              >
-                <div className="relative aspect-square rounded-xl overflow-hidden mb-2">
-                  <img 
-                    src={getImageUrl(song.cover_url)} 
-                    alt={song.title} 
-                    className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
-                    onError={(e) => { e.target.src = '/default-cover.jpg' }}
-                  />
-                  <AnimatePresence>
-                    {hoveredSong === song.id && (
-                      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-black/50 flex items-center justify-center backdrop-blur-sm">
-                        <div className="w-10 h-10 bg-primary rounded-full flex items-center justify-center">
-                          <Play className="w-4 h-4 fill-current ml-0.5" />
-                        </div>
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
-                  <div className="absolute top-1.5 left-1.5 w-6 h-6 bg-black/60 backdrop-blur-sm rounded-md flex items-center justify-center">
-                    <span className="text-xs font-bold">{i + 1}</span>
-                  </div>
-                </div>
-                <h3 className="font-semibold text-sm truncate group-hover:text-primary transition-colors">{song.title}</h3>
-                <p className="text-xs text-gray-500 truncate">{getArtistName(song)}</p>
-              </motion.div>
+              <SongCard 
+                key={song.id} 
+                song={song} 
+                index={i} 
+                compact={true}
+                showRank={true}
+              />
             ))}
           </div>
         )}
       </section>
 
+      {/* Featured Artists */}
       <section className="px-4 md:px-8 py-4">
         <div className="flex items-end justify-between mb-4">
           <div className="flex items-center gap-2">
@@ -755,6 +679,7 @@ const Home = () => {
         )}
       </section>
 
+      {/* New Releases — NOW USING SongListItem */}
       <section className="px-4 md:px-8 py-4">
         <div className="flex items-end justify-between mb-4">
           <div className="flex items-center gap-2">
@@ -769,38 +694,19 @@ const Home = () => {
         {newReleases.length === 0 ? (
           <div className="text-center py-8 text-gray-500 text-sm">No new releases yet</div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
+          <div className="space-y-1">
             {newReleases.map((song, i) => (
-              <motion.div
-                key={song.id}
-                initial={{ opacity: 0, x: -10 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: i * 0.03 }}
-                onClick={() => handlePlayNewRelease(song)}
-                className="group flex items-center gap-3 p-2.5 rounded-xl hover:bg-surface/80 cursor-pointer transition-all"
-              >
-                <div className="relative w-14 h-14 rounded-lg overflow-hidden flex-shrink-0">
-                  <img 
-                    src={getImageUrl(song.cover_url)} 
-                    alt={song.title} 
-                    className="w-full h-full object-cover"
-                    onError={(e) => { e.target.src = '/default-cover.jpg' }}
-                  />
-                  <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
-                    <Play className="w-5 h-5 fill-current" />
-                  </div>
-                </div>
-                <div className="flex-1 min-w-0">
-                  <h3 className="font-semibold text-sm truncate group-hover:text-primary transition-colors">{song.title}</h3>
-                  <p className="text-xs text-gray-500 truncate">{getArtistName(song)}</p>
-                </div>
-                <span className="text-xs text-gray-600 font-medium">{song.duration ? `${Math.floor(song.duration / 60)}:${(song.duration % 60).toString().padStart(2, '0')}` : '3:45'}</span>
-              </motion.div>
+              <SongListItem 
+                key={song.id} 
+                song={song} 
+                index={i}
+              />
             ))}
           </div>
         )}
       </section>
 
+      {/* Browse by Mood */}
       <section className="px-4 md:px-8 py-4">
         <div className="flex items-end justify-between mb-4">
           <div className="flex items-center gap-2">
@@ -837,6 +743,7 @@ const Home = () => {
         )}
       </section>
 
+      {/* CTA Section */}
       <section className="px-4 md:px-8 pt-4 pb-6">
         <div className="relative rounded-2xl overflow-hidden bg-gradient-to-r from-primary/20 via-secondary/20 to-primary/20 p-6 md:p-8">
           <div className="absolute top-0 right-0 w-64 h-64 bg-primary/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
@@ -887,6 +794,7 @@ const Home = () => {
         </div>
       </section>
 
+      {/* Footer */}
       <div className="px-4 md:px-8 pb-4">
         <div className="flex flex-col md:flex-row items-center justify-between gap-4 py-4 border-t border-white/5 text-xs text-gray-600">
           <div className="flex items-center gap-4">
@@ -900,6 +808,7 @@ const Home = () => {
         </div>
       </div>
 
+      {/* Modals */}
       <AnimatePresence>
         {activeModal && (
           <motion.div
@@ -962,7 +871,7 @@ const Home = () => {
                     {activeModal === 'recent' && modalData.map((item, i) => (
                       <div 
                         key={item.id || i} 
-                        onClick={() => { setActiveModal(null); player?.playSong?.(item.song) }}
+                        onClick={() => { setActiveModal(null); playSong(item.song) }}
                         className="flex items-center gap-3 p-3 rounded-xl hover:bg-white/[0.03] transition-colors cursor-pointer group"
                       >
                         <div className="w-12 h-12 rounded-lg overflow-hidden flex-shrink-0">
@@ -977,22 +886,7 @@ const Home = () => {
                     ))}
 
                     {activeModal === 'fresh' && modalData.map((song, i) => (
-                      <div 
-                        key={song.id} 
-                        onClick={() => { setActiveModal(null); player?.playSong?.(song) }}
-                        className="flex items-center gap-3 p-3 rounded-xl hover:bg-white/[0.03] transition-colors cursor-pointer group"
-                      >
-                        <div className="w-12 h-12 rounded-lg overflow-hidden flex-shrink-0">
-                          <img src={getImageUrl(song.cover_url)} alt={song.title} className="w-full h-full object-cover" />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium text-white truncate group-hover:text-fuchsia-300 transition-colors">{song.title}</p>
-                          <p className="text-xs text-gray-500">{getArtistName(song)}</p>
-                        </div>
-                        <span className="text-xs text-gray-600">
-                          {song.duration ? `${Math.floor(song.duration / 60)}:${(song.duration % 60).toString().padStart(2, '0')}` : '3:45'}
-                        </span>
-                      </div>
+                      <SongListItem key={song.id} song={song} index={i} />
                     ))}
 
                     {activeModal === 'artists' && modalData.map((artist, i) => (

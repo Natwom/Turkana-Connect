@@ -19,7 +19,7 @@ import {
 import { searchApi } from '../api'
 import songsApi from '../api/songs'
 import SongCard from '../components/SongCard'
-import { usePlayer } from '../context/PlayerContext'
+import { usePlayer } from '../hooks/usePlayer'
 
 const Search = () => {
   const [searchParams, setSearchParams] = useSearchParams()
@@ -45,7 +45,6 @@ const Search = () => {
     const s = searchParams.get('sort')
     
     if (s === 'trending' || s === 'newest' || s === 'likes') {
-      // Handle sort-only navigation (from "See All" buttons)
       setSort(s)
       setQuery('')
       setIsBrowseMode(false)
@@ -56,7 +55,6 @@ const Search = () => {
       setIsBrowseMode(false)
       performSearch(q)
     } else {
-      // No query, no sort — show browse mode (all songs)
       setQuery('')
       setSort('')
       setIsBrowseMode(true)
@@ -106,7 +104,6 @@ const Search = () => {
     }
   }
 
-  // NEW: Fetch all songs for browse mode
   const fetchAllSongs = async () => {
     setLoading(true)
     try {
@@ -195,7 +192,6 @@ const Search = () => {
         <div className="absolute inset-0 bg-gradient-to-b from-violet-900/20 to-transparent h-64 pointer-events-none" />
         
         <div className="relative pt-8 pb-6 px-4">
-          {/* Sort mode header */}
           {isSortMode && (
             <motion.div 
               initial={{ opacity: 0, x: -20 }}
@@ -217,7 +213,6 @@ const Search = () => {
             </motion.div>
           )}
 
-          {/* Browse mode header */}
           {isBrowseMode && !isSortMode && (
             <motion.div 
               initial={{ opacity: 0, x: -20 }}
@@ -234,7 +229,6 @@ const Search = () => {
             </motion.div>
           )}
 
-          {/* Normal search header */}
           {!isSortMode && !isBrowseMode && (
             <>
               <motion.h1 
@@ -259,14 +253,13 @@ const Search = () => {
             </>
           )}
 
-          {/* Search bar - hidden in sort mode, shown in browse and search */}
           {!isSortMode && (
             <form onSubmit={handleSubmit} className="max-w-2xl relative">
               <motion.div 
                 className={`relative group ${isSearchFocused ? 'scale-[1.02]' : ''} transition-transform duration-300`}
               >
                 <div className={`absolute -inset-1 bg-gradient-to-r from-violet-500/30 via-fuchsia-500/30 to-pink-500/30 rounded-2xl blur-md transition-opacity duration-300 ${isSearchFocused ? 'opacity-100' : 'opacity-0'}`} />
-                <div className={`relative flex items-center bg-[#1a1a2e] border rounded-2xl transition-all duration-300 ${
+                <div className={`relative flex items-center bg-[#1a1a2e] border                rounded-2xl transition-all duration-300 ${
                   isSearchFocused 
                     ? 'border-fuchsia-500/50 shadow-lg shadow-fuchsia-500/10' 
                     : 'border-white/[0.08] hover:border-white/[0.15]'
@@ -350,7 +343,7 @@ const Search = () => {
             </form>
           )}
 
-          {/* Trending searches - only show in empty search mode (not browse, not sort) */}
+          {/* Trending searches - only show in empty search mode */}
           {!query && !isSortMode && !isBrowseMode && (
             <motion.div 
               initial={{ opacity: 0, y: 20 }}
@@ -619,6 +612,12 @@ const Search = () => {
                                   <motion.button
                                     whileHover={{ scale: 1.1 }}
                                     whileTap={{ scale: 0.9 }}
+                                    onClick={(e) => {
+                                      e.stopPropagation()
+                                      if (album.songs?.[0]) {
+                                        playSong(album.songs[0], album.songs)
+                                      }
+                                    }}
                                     className="w-12 h-12 rounded-full bg-fuchsia-600 flex items-center justify-center shadow-lg"
                                   >
                                     <Play className="w-5 h-5 text-white ml-0.5" fill="white" />
