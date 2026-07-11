@@ -4,15 +4,13 @@ import { useNavigate } from 'react-router-dom'
 import api from '../api/axios'
 import songsApi from '../api/songs'
 import artistsApi from '../api/artists'
-import liveApi from '../api/live'
 import { usePlayer } from '../hooks/usePlayer'
 import { useAuth } from '../context/AuthContext'
-import { 
-  TrendingUp, Disc, Users, Sparkles, Play, ChevronRight, 
+import {
+  TrendingUp, Disc, Users, Sparkles, Play, ChevronRight,
   Headphones, Flame, Clock, Star, ArrowRight, Music, Mic2,
   Award, Heart, Share2, BarChart3, Eye, X, Upload,
-  Trophy, Zap, History, Radio, UserCheck, Compass,
-  Video, Mic, Bell, Plus
+  Trophy, Zap, History, Compass, UserCheck, Mic, Bell, Plus
 } from 'lucide-react'
 
 const getImageUrl = (path) => {
@@ -37,7 +35,7 @@ const Home = () => {
   const navigate = useNavigate()
   const player = usePlayer() || {}
   const { user } = useAuth()
-  
+
   const heroRef = useRef(null)
   const { scrollYProgress } = useScroll({ target: heroRef })
   const heroY = useTransform(scrollYProgress, [0, 0.3], [0, -50])
@@ -58,7 +56,6 @@ const Home = () => {
   const [forYouSongs, setForYouSongs] = useState([])
   const [followingSongs, setFollowingSongs] = useState([])
   const [followingList, setFollowingList] = useState([])
-  const [liveArtists, setLiveArtists] = useState([])
   const [feedLoading, setFeedLoading] = useState(false)
 
   const [activeModal, setActiveModal] = useState(null)
@@ -70,7 +67,7 @@ const Home = () => {
       try {
         setLoading(true)
         setError(null)
-        
+
         let trendingData = []
         let newReleasesData = []
         let featuredArtistsData = []
@@ -120,7 +117,7 @@ const Home = () => {
           users: featuredArtistsData.reduce((acc, a) => acc + (a.followers_count || 0), 0)
         })
 
-        const mixed = [...trendingData, ...newReleasesData].filter((song, index, self) => 
+        const mixed = [...trendingData, ...newReleasesData].filter((song, index, self) =>
           index === self.findIndex((s) => s.id === song.id)
         )
         setForYouSongs(mixed.slice(0, 12))
@@ -136,31 +133,6 @@ const Home = () => {
       }
     }
     fetchData()
-  }, [])
-
-  // Fetch real live streams
-  useEffect(() => {
-    const fetchLiveStreams = async () => {
-      try {
-        const res = await liveApi.getActiveStreams(6)
-        const streams = Array.isArray(res.data) ? res.data : []
-        const mapped = streams.map(stream => ({
-          id: stream.id,
-          stage_name: stream.artist?.stage_name || 'Unknown Artist',
-          image_url: stream.artist?.image_url || '/default-avatar.jpg',
-          viewers: stream.current_viewers || 0,
-          title: stream.title,
-          isLive: true
-        }))
-        setLiveArtists(mapped)
-      } catch (err) {
-        console.error('Live streams fetch failed:', err)
-        setLiveArtists([])
-      }
-    }
-    fetchLiveStreams()
-    const interval = setInterval(fetchLiveStreams, 30000)
-    return () => clearInterval(interval)
   }, [])
 
   useEffect(() => {
@@ -189,7 +161,7 @@ const Home = () => {
     setActiveModal(type)
     setModalLoading(true)
     setModalData([])
-    
+
     try {
       if (type === 'recent') {
         if (!user) {
@@ -298,15 +270,11 @@ const Home = () => {
 
   return (
     <div className="space-y-0 pb-10">
-      
+
       <div className="px-4 md:px-8 pt-4 pb-2">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <div className="flex items-center gap-2 px-3 py-1.5 bg-red-500/10 border border-red-500/20 rounded-full">
-              <span className="w-2 h-2 bg-red-500 rounded-full animate-pulse" />
-              <span className="text-xs font-medium text-red-400">Live Now</span>
-            </div>
-            <span className="text-xs text-gray-500">{liveArtists.length > 0 ? `${liveArtists.reduce((a, b) => a + (b.viewers || 0), 0).toLocaleString()} watching` : '1,234 listeners online'}</span>
+            <span className="text-xs text-gray-500">{stats.songs} songs online</span>
           </div>
           <div className="flex items-center gap-4 text-xs text-gray-500">
             <span className="flex items-center gap-1"><Music className="w-3 h-3" /> {stats.songs} songs</span>
@@ -315,26 +283,26 @@ const Home = () => {
         </div>
       </div>
 
-      <motion.section 
+      <motion.section
         ref={heroRef}
         style={{ y: heroY, opacity: heroOpacity }}
         className="relative mx-4 rounded-3xl overflow-hidden"
       >
         <div className="absolute inset-0">
-          <img 
-            src={getImageUrl(featuredSong?.cover_url)} 
-            alt="Featured" 
+          <img
+            src={getImageUrl(featuredSong?.cover_url)}
+            alt="Featured"
             className="w-full h-full object-cover"
             onError={(e) => { e.target.src = '/default-cover.jpg' }}
           />
           <div className="absolute inset-0 bg-gradient-to-r from-background via-background/95 to-background/60" />
         </div>
-        
+
         <div className="relative z-10 flex items-center gap-6 p-6 md:p-8">
           <div className="relative w-32 h-32 md:w-40 md:h-40 rounded-2xl overflow-hidden shadow-2xl flex-shrink-0 ring-2 ring-primary/30">
-            <img 
-              src={getImageUrl(featuredSong?.cover_url)} 
-              alt="Featured" 
+            <img
+              src={getImageUrl(featuredSong?.cover_url)}
+              alt="Featured"
               className="w-full h-full object-cover"
               onError={(e) => { e.target.src = '/default-cover.jpg' }}
             />
@@ -342,7 +310,7 @@ const Home = () => {
               <Play className="w-12 h-12 fill-current text-white" />
             </button>
           </div>
-          
+
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 mb-2">
               <span className="px-2 py-0.5 bg-primary/20 text-primary rounded text-xs font-bold uppercase">Featured</span>
@@ -367,99 +335,6 @@ const Home = () => {
           </div>
         </div>
       </motion.section>
-
-      {user?.role === 'artist' && (
-        <section className="px-4 md:px-8 py-4">
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="relative rounded-2xl overflow-hidden bg-gradient-to-r from-red-600/20 via-rose-600/10 to-red-600/20 border border-red-500/20 p-4"
-          >
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="relative">
-                  <div className="w-10 h-10 bg-red-500 rounded-xl flex items-center justify-center">
-                    <Video className="w-5 h-5 text-white" />
-                  </div>
-                  <span className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full border-2 border-background animate-pulse" />
-                </div>
-                <div>
-                  <h3 className="font-bold text-sm">Go Live</h3>
-                  <p className="text-xs text-gray-400">Stream to your fans in real-time</p>
-                </div>
-              </div>
-              <button 
-                onClick={() => navigate('/go-live')}
-                className="flex items-center gap-2 px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-xl text-sm font-semibold transition-all hover:scale-105"
-              >
-                <Radio className="w-4 h-4" />
-                Start Stream
-              </button>
-            </div>
-          </motion.div>
-        </section>
-      )}
-
-      {liveArtists.length > 0 && (
-        <section className="px-4 md:px-8 py-4">
-          <div className="flex items-end justify-between mb-4">
-            <div className="flex items-center gap-2">
-              <div className="relative">
-                <Radio className="w-5 h-5 text-red-500" />
-                <span className="absolute -top-1 -right-1 w-2 h-2 bg-red-500 rounded-full animate-pulse" />
-              </div>
-              <h2 className="text-xl font-bold">Live Now</h2>
-            </div>
-            <button onClick={() => navigate('/live')} className="group flex items-center gap-1 text-xs text-gray-400 hover:text-white transition-colors">
-              See All <ChevronRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
-            </button>
-          </div>
-
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
-            {liveArtists.map((artist, i) => (
-              <motion.div
-                key={artist.id}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: i * 0.05 }}
-                onClick={() => navigate(`/live/${artist.id}`)}
-                className="group relative rounded-2xl overflow-hidden cursor-pointer"
-              >
-                <div className="aspect-video relative bg-gradient-to-br from-red-900/50 to-rose-900/50">
-                  <img 
-                    src={getImageUrl(artist.image_url)} 
-                    alt={artist.stage_name}
-                    className="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity"
-                    onError={(e) => { e.target.src = '/default-avatar.jpg' }}
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent" />
-                  
-                  <div className="absolute top-2 left-2 flex items-center gap-1.5 px-2 py-1 bg-red-500 rounded-md">
-                    <span className="w-1.5 h-1.5 bg-white rounded-full animate-pulse" />
-                    <span className="text-[10px] font-bold text-white uppercase">Live</span>
-                  </div>
-                  
-                  <div className="absolute top-2 right-2 flex items-center gap-1 px-2 py-1 bg-black/50 backdrop-blur-sm rounded-md">
-                    <Users className="w-3 h-3 text-white" />
-                    <span className="text-[10px] text-white">{artist.viewers?.toLocaleString()}</span>
-                  </div>
-                  
-                  <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                    <div className="w-12 h-12 bg-red-500 rounded-full flex items-center justify-center shadow-lg">
-                      <Play className="w-5 h-5 text-white ml-0.5" fill="white" />
-                    </div>
-                  </div>
-                  
-                  <div className="absolute bottom-0 left-0 right-0 p-3">
-                    <h3 className="font-semibold text-sm text-white truncate">{artist.stage_name}</h3>
-                    <p className="text-xs text-gray-300 truncate">{artist.title}</p>
-                  </div>
-                </div>
-              </motion.div>
-            ))}
-          </div>
-        </section>
-      )}
 
       <section className="px-4 md:px-8 py-4">
         <div className="flex items-center gap-2 mb-4">
@@ -510,9 +385,9 @@ const Home = () => {
                     className="group cursor-pointer"
                   >
                     <div className="relative aspect-square rounded-xl overflow-hidden mb-2">
-                      <img 
-                        src={getImageUrl(song.cover_url)} 
-                        alt={song.title} 
+                      <img
+                        src={getImageUrl(song.cover_url)}
+                        alt={song.title}
                         className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
                         onError={(e) => { e.target.src = '/default-cover.jpg' }}
                       />
@@ -546,7 +421,7 @@ const Home = () => {
                 <UserCheck className="w-12 h-12 text-gray-600 mx-auto mb-4" />
                 <h3 className="text-lg font-bold text-white mb-2">Sign in to see updates</h3>
                 <p className="text-gray-500 text-sm mb-4">Follow your favorite artists and never miss a new release.</p>
-                <button 
+                <button
                   onClick={() => navigate('/login')}
                   className="px-6 py-2.5 bg-primary hover:bg-primary/90 rounded-xl font-medium text-sm transition-all"
                 >
@@ -562,7 +437,7 @@ const Home = () => {
                 <UserCheck className="w-12 h-12 text-gray-600 mx-auto mb-4" />
                 <h3 className="text-lg font-bold text-white mb-2">You're not following anyone yet</h3>
                 <p className="text-gray-500 text-sm mb-4">Discover and follow artists to see their latest songs here.</p>
-                <button 
+                <button
                   onClick={() => navigate('/search?type=artists')}
                   className="px-6 py-2.5 bg-primary hover:bg-primary/90 rounded-xl font-medium text-sm transition-all"
                 >
@@ -585,8 +460,8 @@ const Home = () => {
                       className="flex flex-col items-center gap-1.5 min-w-[64px]"
                     >
                       <div className="w-14 h-14 rounded-full overflow-hidden ring-2 ring-white/10 hover:ring-primary/50 transition-all">
-                        <img 
-                          src={getImageUrl(artist.image_url)} 
+                        <img
+                          src={getImageUrl(artist.image_url)}
                           alt={artist.stage_name}
                           className="w-full h-full object-cover"
                           onError={(e) => { e.target.src = '/default-avatar.jpg' }}
@@ -610,9 +485,9 @@ const Home = () => {
                       className="group cursor-pointer"
                     >
                       <div className="relative aspect-square rounded-xl overflow-hidden mb-2">
-                        <img 
-                          src={getImageUrl(song.cover_url)} 
-                          alt={song.title} 
+                        <img
+                          src={getImageUrl(song.cover_url)}
+                          alt={song.title}
                           className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
                           onError={(e) => { e.target.src = '/default-cover.jpg' }}
                         />
@@ -667,9 +542,9 @@ const Home = () => {
                 className="group cursor-pointer"
               >
                 <div className="relative aspect-square rounded-xl overflow-hidden mb-2">
-                  <img 
-                    src={getImageUrl(song.cover_url)} 
-                    alt={song.title} 
+                  <img
+                    src={getImageUrl(song.cover_url)}
+                    alt={song.title}
                     className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
                     onError={(e) => { e.target.src = '/default-cover.jpg' }}
                   />
@@ -721,18 +596,18 @@ const Home = () => {
                 className="group cursor-pointer"
               >
                 <div className="relative aspect-square rounded-xl overflow-hidden mb-2">
-                  <img 
-                    src={getImageUrl(artist.image_url)} 
-                    alt={artist.stage_name} 
+                  <img
+                    src={getImageUrl(artist.image_url)}
+                    alt={artist.stage_name}
                     className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
                     onError={(e) => { e.target.src = '/default-avatar.jpg' }}
                   />
                   <AnimatePresence>
                     {hoveredArtist === artist.id && (
-                      <motion.div 
-                        initial={{ opacity: 0 }} 
-                        animate={{ opacity: 1 }} 
-                        exit={{ opacity: 0 }} 
+                      <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
                         className="absolute inset-0 bg-black/50 flex items-center justify-center backdrop-blur-sm"
                       >
                         <div className="w-10 h-10 bg-secondary rounded-full flex items-center justify-center">
@@ -780,9 +655,9 @@ const Home = () => {
                 className="group flex items-center gap-3 p-2.5 rounded-xl hover:bg-surface/80 cursor-pointer transition-all"
               >
                 <div className="relative w-14 h-14 rounded-lg overflow-hidden flex-shrink-0">
-                  <img 
-                    src={getImageUrl(song.cover_url)} 
-                    alt={song.title} 
+                  <img
+                    src={getImageUrl(song.cover_url)}
+                    alt={song.title}
                     className="w-full h-full object-cover"
                     onError={(e) => { e.target.src = '/default-cover.jpg' }}
                   />
@@ -841,7 +716,7 @@ const Home = () => {
         <div className="relative rounded-2xl overflow-hidden bg-gradient-to-r from-primary/20 via-secondary/20 to-primary/20 p-6 md:p-8">
           <div className="absolute top-0 right-0 w-64 h-64 bg-primary/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
           <div className="absolute bottom-0 left-0 w-48 h-48 bg-secondary/10 rounded-full blur-3xl translate-y-1/2 -translate-x-1/2" />
-          
+
           <div className="relative z-10 flex flex-col md:flex-row items-center justify-between gap-4">
             <div className="text-center md:text-left">
               <div className="flex items-center justify-center md:justify-start gap-2 mb-2">
@@ -854,13 +729,13 @@ const Home = () => {
               </p>
             </div>
             <div className="flex items-center gap-3">
-              <button 
+              <button
                 onClick={() => navigate('/become-artist')}
                 className="px-6 py-3 bg-primary hover:bg-primary/90 rounded-xl font-bold text-sm transition-all hover:scale-105 whitespace-nowrap"
               >
                 Become an Artist
               </button>
-              <button 
+              <button
                 onClick={() => navigate('/upload-song')}
                 className="px-6 py-3 bg-white/10 hover:bg-white/20 rounded-xl font-medium text-sm transition-all whitespace-nowrap"
               >
@@ -923,7 +798,7 @@ const Home = () => {
                   </div>
                   <h3 className="text-lg font-bold text-white">{getModalTitle()}</h3>
                 </div>
-                <button 
+                <button
                   onClick={() => setActiveModal(null)}
                   className="p-2 hover:bg-white/[0.05] rounded-lg transition-colors"
                 >
@@ -943,7 +818,7 @@ const Home = () => {
                         <History className="w-12 h-12 text-gray-600 mx-auto mb-4" />
                         <h4 className="text-lg font-bold text-white mb-2">Sign in to see your history</h4>
                         <p className="text-gray-500 mb-6">Track your listening habits and pick up where you left off.</p>
-                        <button 
+                        <button
                           onClick={() => { setActiveModal(null); navigate('/login') }}
                           className="px-6 py-3 bg-gradient-to-r from-violet-600 to-fuchsia-600 text-white rounded-xl font-medium text-sm"
                         >
@@ -960,8 +835,8 @@ const Home = () => {
                 ) : (
                   <div className="space-y-2">
                     {activeModal === 'recent' && modalData.map((item, i) => (
-                      <div 
-                        key={item.id || i} 
+                      <div
+                        key={item.id || i}
                         onClick={() => { setActiveModal(null); player?.playSong?.(item.song) }}
                         className="flex items-center gap-3 p-3 rounded-xl hover:bg-white/[0.03] transition-colors cursor-pointer group"
                       >
@@ -977,8 +852,8 @@ const Home = () => {
                     ))}
 
                     {activeModal === 'fresh' && modalData.map((song, i) => (
-                      <div 
-                        key={song.id} 
+                      <div
+                        key={song.id}
                         onClick={() => { setActiveModal(null); player?.playSong?.(song) }}
                         className="flex items-center gap-3 p-3 rounded-xl hover:bg-white/[0.03] transition-colors cursor-pointer group"
                       >
@@ -996,8 +871,8 @@ const Home = () => {
                     ))}
 
                     {activeModal === 'artists' && modalData.map((artist, i) => (
-                      <div 
-                        key={artist.id} 
+                      <div
+                        key={artist.id}
                         onClick={() => { setActiveModal(null); navigate(`/artist/${artist.id}`) }}
                         className="flex items-center gap-3 p-3 rounded-xl hover:bg-white/[0.03] transition-colors cursor-pointer group"
                       >
