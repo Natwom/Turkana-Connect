@@ -9,7 +9,7 @@ import { useAuth } from '../context/AuthContext'
 import {
   TrendingUp, Disc, Users, Sparkles, Play, ChevronRight,
   Headphones, Flame, Clock, Star, ArrowRight, Music, Mic2,
-  Award, Heart, Share2, BarChart3, Eye, X, Upload,
+  Award, Heart, Share2, Eye, X,
   Trophy, Zap, History, Compass, UserCheck, Mic, Bell, Plus
 } from 'lucide-react'
 
@@ -28,7 +28,8 @@ const formatTimeAgo = (isoString) => {
   if (diff < 60) return 'Just now'
   if (diff < 3600) return `${Math.floor(diff / 60)}m ago`
   if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`
-  return `${Math.floor(diff / 86400)}d ago`
+  if (diff < 604800) return `${Math.floor(diff / 86400)}d ago`
+  return `${Math.floor(diff / 604800)}w ago`
 }
 
 const Home = () => {
@@ -630,6 +631,7 @@ const Home = () => {
         )}
       </section>
 
+      {/* NEW RELEASES — shows upload time, newest on top */}
       <section className="px-4 md:px-8 py-4">
         <div className="flex items-end justify-between mb-4">
           <div className="flex items-center gap-2">
@@ -669,7 +671,10 @@ const Home = () => {
                   <h3 className="font-semibold text-sm truncate group-hover:text-primary transition-colors">{song.title}</h3>
                   <p className="text-xs text-gray-500 truncate">{getArtistName(song)}</p>
                 </div>
-                <span className="text-xs text-gray-600 font-medium">{song.duration ? `${Math.floor(song.duration / 60)}:${(song.duration % 60).toString().padStart(2, '0')}` : '3:45'}</span>
+                {/* SHOWS UPLOAD TIME instead of duration */}
+                <span className="text-xs text-gray-600 font-medium whitespace-nowrap">
+                  {formatTimeAgo(song.created_at)}
+                </span>
               </motion.div>
             ))}
           </div>
@@ -865,7 +870,7 @@ const Home = () => {
                           <p className="text-xs text-gray-500">{getArtistName(song)}</p>
                         </div>
                         <span className="text-xs text-gray-600">
-                          {song.duration ? `${Math.floor(song.duration / 60)}:${(song.duration % 60).toString().padStart(2, '0')}` : '3:45'}
+                          {formatTimeAgo(song.created_at)}
                         </span>
                       </div>
                     ))}
