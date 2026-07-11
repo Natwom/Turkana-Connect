@@ -6,10 +6,13 @@ import { useAuth } from '../context/AuthContext'
 import likesApi from '../api/likes'
 
 const SongCard = ({ song, index = 0, onOpenComments }) => {
-  const { playSong, currentSong, isPlaying } = usePlayer()
+  // NULL-SAFE: never destructure null
+  const player = usePlayer()
+  const { playSong, currentSong, isPlaying } = player || {}
+
   const { isAuthenticated } = useAuth()
-  const isCurrentSong = currentSong?.id === song.id
-  
+  const isCurrentSong = currentSong?.id === song?.id
+
   const [isLiked, setIsLiked] = useState(false)
   const [isLikeLoading, setIsLikeLoading] = useState(false)
 
@@ -26,25 +29,42 @@ const SongCard = ({ song, index = 0, onOpenComments }) => {
 
   const handleLikeToggle = async (e) => {
     e.stopPropagation()
-    if (!isAuthenticated) { window.location.href = '/login'; return }
+    if (!isAuthenticated) {
+      window.location.href = '/login'
+      return
+    }
     if (isLikeLoading) return
     setIsLikeLoading(true)
     try {
-      if (isLiked) { await likesApi.unlikeSong(song.id); setIsLiked(false) }
-      else { await likesApi.likeSong(song.id); setIsLiked(true) }
+      if (isLiked) {
+        await likesApi.unlikeSong(song.id)
+        setIsLiked(false)
+      } else {
+        await likesApi.likeSong(song.id)
+        setIsLiked(true)
+      }
     } catch (err) {
-      try { const res = await likesApi.checkLike(song.id); setIsLiked(res.data.liked) } catch (_) {}
-    } finally { setIsLikeLoading(false) }
+      try {
+        const res = await likesApi.checkLike(song.id)
+        setIsLiked(res.data.liked)
+      } catch (_) {}
+    } finally {
+      setIsLikeLoading(false)
+    }
   }
 
   const handleCommentClick = (e) => {
     e.stopPropagation()
-    if (onOpenComments) {
-      onOpenComments(song)
+    if (onOpenComments) onOpenComments(song)
+  }
+
+  const handlePlay = () => {
+    if (playSong && song) {
+      playSong(song)
     }
   }
 
-  const artistDisplay = song.artist_name || song.artist?.stage_name || 'Unknown Artist'
+  const artistDisplay = song?.artist_name || song?.artist?.stage_name || 'Unknown Artist'
 
   return (
     <motion.div
@@ -52,12 +72,12 @@ const SongCard = ({ song, index = 0, onOpenComments }) => {
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: index * 0.05 }}
       className="group relative glass-card p-4 hover-lift cursor-pointer"
-      onClick={() => playSong(song)}
+      onClick={handlePlay}
     >
       <div className="relative aspect-square rounded-xl overflow-hidden mb-3">
-        <img 
-          src={song.cover_url || '/default-cover.jpg'} 
-          alt={song.title}
+        <img
+          src={song?.cover_url || '/default-cover.jpg'}
+          alt={song?.title}
           className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
         />
         <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
@@ -74,33 +94,35 @@ const SongCard = ({ song, index = 0, onOpenComments }) => {
           </div>
         </div>
       </div>
-      
+
       <h3 className="font-semibold text-sm truncate mb-1 group-hover:text-primary transition-colors">
-        {song.title}
+        {song?.title}
       </h3>
       <p className="text-xs text-gray-400 truncate">{artistDisplay}</p>
-      
+
       <div className="flex items-center justify-between mt-3 opacity-0 group-hover:opacity-100 transition-opacity">
         <div className="flex items-center gap-1">
-          <button 
+          <button
             onClick={handleLikeToggle}
             disabled={isLikeLoading}
             className="p-1.5 hover:bg-white/10 rounded-lg transition-colors disabled:opacity-50"
           >
-            <Heart 
+            <Heart
               className={`w-4 h-4 transition-colors ${
                 isLiked ? 'text-red-500 fill-red-500' : 'text-gray-400 hover:text-red-400'
-              }`} 
+              }`}
             />
           </button>
-          <button 
+          <button
             onClick={handleCommentClick}
             className="p-1.5 hover:bg-white/10 rounded-lg transition-colors"
           >
             <MessageCircle className="w-4 h-4 text-gray-400 hover:text-violet-400 transition-colors" />
           </button>
         </div>
-        <span className="text-xs text-gray-500">{song.play_count?.toLocaleString()} plays</span>
+        <span className="text-xs text-gray-500">
+          {song?.play_count?.toLocaleString() || 0} plays
+        </span>
       </div>
     </motion.div>
   )

@@ -1,4 +1,5 @@
 import { Routes, Route } from 'react-router-dom'
+import { PlayerProvider } from './context/PlayerContext'
 import { useAuth } from './context/AuthContext'
 import Layout from './components/Layout'
 import Home from './pages/Home'
@@ -28,25 +29,27 @@ function ProfileRouter() {
 
 function App() {
   return (
-    <Routes>
-      <Route path="/" element={<Layout />}>
-        <Route index element={<Home />} />
-        <Route path="search" element={<Search />} />
-        <Route path="artist/:id" element={<ArtistProfile />} />
-        <Route path="album/:id" element={<AlbumPage />} />
-        <Route path="playlist/:id" element={<PlaylistPage />} />
-        <Route path="profile" element={<ProfileRouter />} />
-        <Route path="categories" element={<Categories />} />
-        <Route path="settings" element={<Settings />} />
-        <Route path="upload-song" element={<UploadSong />} />
-        <Route path="become-artist" element={<BecomeArtist />} />
-        <Route path="go-live" element={<GoLive />} />
-        <Route path="live" element={<LiveStreams />} />
-        <Route path="live/:id" element={<LiveStream />} />
-      </Route>
-      <Route path="/login" element={<Login />} />
-      <Route path="/register" element={<Register />} />
-    </Routes>
+    <PlayerProvider>
+      <Routes>
+        <Route path="/" element={<Layout />}>
+          <Route index element={<Home />} />
+          <Route path="search" element={<Search />} />
+          <Route path="artist/:id" element={<ArtistProfile />} />
+          <Route path="album/:id" element={<AlbumPage />} />
+          <Route path="playlist/:id" element={<PlaylistPage />} />
+          <Route path="profile" element={<ProfileRouter />} />
+          <Route path="categories" element={<Categories />} />
+          <Route path="settings" element={<Settings />} />
+          <Route path="upload-song" element={<UploadSong />} />
+          <Route path="become-artist" element={<BecomeArtist />} />
+          <Route path="go-live" element={<GoLive />} />
+          <Route path="live" element={<LiveStreams />} />
+          <Route path="live/:id" element={<LiveStream />} />
+        </Route>
+        <Route path="/login" element={<Login />} />
+        <Route path="/register" element={<Register />} />
+      </Routes>
+    </PlayerProvider>
   )
 }
 

@@ -1,37 +1,54 @@
 import { useState, useRef, useEffect } from 'react'
 import { motion } from 'framer-motion'
-import { 
-  Play, Pause, SkipBack, SkipForward, Shuffle, 
-  Repeat, Volume2, VolumeX, ListMusic, Heart 
+import {
+  Play,
+  Pause,
+  SkipBack,
+  SkipForward,
+  Shuffle,
+  Repeat,
+  Volume2,
+  VolumeX,
+  ListMusic,
+  Heart,
 } from 'lucide-react'
 import { usePlayer } from '../context/PlayerContext'
 import { useAuth } from '../context/AuthContext'
 import { useSettings } from '../context/SettingsContext'
 import likesApi from '../api/likes'
 
-const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:8000'
+// Use the SAME fallback as axios.js so Render deployment works
+const API_BASE = import.meta.env.VITE_API_URL || 'https://turkana-connect-api.onrender.com'
 
-const getAudioUrl = (path) => {
+// Robust URL builder: handles /uploads/..., uploads/..., and http://...
+const normalizeUrl = (path) => {
   if (!path) return ''
   if (path.startsWith('http')) return path
-  return `${API_BASE}${path}`
+  const base = API_BASE.endsWith('/') ? API_BASE.slice(0, -1) : API_BASE
+  const cleanPath = path.startsWith('/') ? path : `/${path}`
+  return `${base}${cleanPath}`
 }
 
-const getImageUrl = (path) => {
-  if (!path) return '/default-cover.jpg'
-  if (path.startsWith('http')) return path
-  return `${API_BASE}${path}`
-}
+const getAudioUrl = (path) => normalizeUrl(path)
+const getImageUrl = (path) => normalizeUrl(path) || '/default-cover.jpg'
 
 const MusicPlayer = () => {
   const player = usePlayer() || {}
   const { isAuthenticated } = useAuth()
   const { settings } = useSettings()
-  const { 
-    currentSong, isPlaying, togglePlay, playNext, 
-    playPrevious, isShuffle, setIsShuffle, isRepeat, setIsRepeat, queue
+  const {
+    currentSong,
+    isPlaying,
+    togglePlay,
+    playNext,
+    playPrevious,
+    isShuffle,
+    setIsShuffle,
+    isRepeat,
+    setIsRepeat,
+    queue,
   } = player
-  
+
   const [progress, setProgress] = useState(0)
   const [duration, setDuration] = useState(0)
   const [volume, setVolume] = useState(0.8)
@@ -42,22 +59,20 @@ const MusicPlayer = () => {
   const audioRef = useRef(null)
 
   useEffect(() => {
-    if (settings.normalize_volume) {
+    if (settings?.normalize_volume) {
       setVolume(0.7)
     }
-  }, [settings.normalize_volume])
+  }, [settings?.normalize_volume])
 
-  // FIX: handleEnded now respects repeat mode
   const handleEnded = () => {
     if (isRepeat) {
-      // Repeat: restart the same song
       if (audioRef.current) {
         audioRef.current.currentTime = 0
-        audioRef.current.play().catch(err => {
+        audioRef.current.play().catch((err) => {
           console.error('Repeat play failed:', err)
         })
       }
-    } else if (settings.autoplay) {
+    } else if (settings?.autoplay) {
       playNext?.()
     } else {
       togglePlay?.()
@@ -85,27 +100,37 @@ const MusicPlayer = () => {
       const audioUrl = getAudioUrl(currentSong.audio_url)
       console.log('Loading audio:', audioUrl)
       setAudioError(false)
+      setProgress(0)
+      setDuration(0)
+
       audioRef.current.src = audioUrl
       audioRef.current.load()
+
       if (isPlaying) {
-        audioRef.current.play().catch(err => {
-          console.error('Audio play failed:', err)
-          setAudioError(true)
-        })
+        const playPromise = audioRef.current.play()
+        if (playPromise !== undefined) {
+          playPromise.catch((err) => {
+            console.error('Audio play failed:', err)
+            setAudioError(true)
+          })
+        }
       }
     }
   }, [currentSong])
 
   useEffect(() => {
-    if (audioRef.current) {
-      if (isPlaying) {
-        audioRef.current.play().catch(err => {
+    if (!audioRef.current) return
+
+    if (isPlaying) {
+      const playPromise = audioRef.current.play()
+      if (playPromise !== undefined) {
+        playPromise.catch((err) => {
           console.error('Audio play failed:', err)
           setAudioError(true)
         })
-      } else {
-        audioRef.current.pause()
       }
+    } else {
+      audioRef.current.pause()
     }
   }, [isPlaying])
 
@@ -124,7 +149,7 @@ const MusicPlayer = () => {
 
   const handleSeek = (e) => {
     const time = parseFloat(e.target.value)
-    if (audioRef.current) {
+    if (audioRef.current && !isNaN(time)) {
       audioRef.current.currentTime = time
       setProgress(time)
     }
@@ -141,7 +166,7 @@ const MusicPlayer = () => {
       return
     }
     if (!currentSong?.id || isLikeLoading) return
-    
+
     setIsLikeLoading(true)
     try {
       if (isLiked) {
@@ -163,7 +188,7 @@ const MusicPlayer = () => {
   }
 
   const formatTime = (seconds) => {
-    if (!seconds || isNaN(seconds)) return '0:00'
+    if (!seconds || isNaN(seconds) || seconds === Infinity) return '0:00'
     const mins = Math.floor(seconds / 60)
     const secs = Math.floor(seconds % 60)
     return `${mins}:${secs.toString().padStart(2, '0')}`
@@ -171,14 +196,14 @@ const MusicPlayer = () => {
 
   if (!currentSong) return null
 
-  // FIX: Show queue count in the UI
   const queueCount = queue?.length || 0
+  const progressPercent = duration > 0 ? (progress / duration) * 100 : 0
 
   return (
-    <motion.div 
+    <motion.div
       initial={{ y: 100 }}
       animate={{ y: 0 }}
-      className="fixed bottom-[72px] left-0 right-0 bg-[#0f0f1a]/95 backdrop-blur-xl border-t border-white/10 z-50 px-4 py-3 md:px-6 md:py-4"
+      className="bg-[#0f0f1a]/95 backdrop-blur-xl border-t border-white/10 px-4 py-3 md:px-6 md:py-4"
     >
       <audio
         ref={audioRef}
@@ -187,37 +212,42 @@ const MusicPlayer = () => {
         onLoadedMetadata={handleTimeUpdate}
         onError={handleAudioError}
         crossOrigin="anonymous"
+        preload="metadata"
       />
 
       <div className="flex items-center gap-4">
         {/* Song Info */}
         <div className="flex items-center gap-3 w-1/4 min-w-[200px]">
-          <img 
-            src={getImageUrl(currentSong.cover_url)} 
+          <img
+            src={getImageUrl(currentSong.cover_url)}
             alt={currentSong.title}
-            className="w-14 h-14 rounded-xl object-cover shadow-lg"
-            onError={(e) => { e.target.src = '/default-cover.jpg' }}
+            className="w-14 h-14 rounded-xl object-cover shadow-lg bg-gray-800"
+            onError={(e) => {
+              e.target.src = '/default-cover.jpg'
+            }}
           />
           <div className="min-w-0">
             <h4 className="font-semibold text-sm truncate">{currentSong.title}</h4>
             <p className="text-xs text-gray-400 truncate">
-              {currentSong.artist_name || currentSong.artist?.stage_name || 'Unknown Artist'}
+              {currentSong.artist_name ||
+                currentSong.artist?.stage_name ||
+                'Unknown Artist'}
             </p>
             {audioError && (
               <p className="text-xs text-red-400">Failed to load audio</p>
             )}
           </div>
-          <button 
+          <button
             onClick={handleLikeToggle}
             disabled={isLikeLoading}
             className="p-2 hover:bg-white/5 rounded-lg transition-colors disabled:opacity-50"
           >
-            <Heart 
+            <Heart
               className={`w-4 h-4 transition-colors ${
-                isLiked 
-                  ? 'text-red-500 fill-red-500' 
+                isLiked
+                  ? 'text-red-500 fill-red-500'
                   : 'text-gray-400 hover:text-red-400'
-              }`} 
+              }`}
             />
           </button>
         </div>
@@ -225,21 +255,23 @@ const MusicPlayer = () => {
         {/* Controls */}
         <div className="flex-1 flex flex-col items-center gap-2">
           <div className="flex items-center gap-4">
-            <button 
+            <button
               onClick={() => setIsShuffle?.(!isShuffle)}
-              className={`p-2 rounded-lg transition-colors ${isShuffle ? 'text-primary' : 'text-gray-400 hover:text-white'}`}
+              className={`p-2 rounded-lg transition-colors ${
+                isShuffle ? 'text-primary' : 'text-gray-400 hover:text-white'
+              }`}
               title="Shuffle"
             >
               <Shuffle className="w-4 h-4" />
             </button>
-            <button 
-              onClick={() => playPrevious?.()} 
+            <button
+              onClick={() => playPrevious?.()}
               className="p-2 hover:bg-white/5 rounded-lg text-gray-300 hover:text-white transition-colors"
               title="Previous"
             >
               <SkipBack className="w-5 h-5" />
             </button>
-            <button 
+            <button
               onClick={() => togglePlay?.()}
               className="w-10 h-10 bg-white rounded-full flex items-center justify-center hover:scale-105 transition-transform"
             >
@@ -249,16 +281,18 @@ const MusicPlayer = () => {
                 <Play className="w-5 h-5 text-background ml-0.5" />
               )}
             </button>
-            <button 
-              onClick={() => playNext?.()} 
+            <button
+              onClick={() => playNext?.()}
               className="p-2 hover:bg-white/5 rounded-lg text-gray-300 hover:text-white transition-colors"
               title="Next"
             >
               <SkipForward className="w-5 h-5" />
             </button>
-            <button 
+            <button
               onClick={() => setIsRepeat?.(!isRepeat)}
-              className={`p-2 rounded-lg transition-colors ${isRepeat ? 'text-primary' : 'text-gray-400 hover:text-white'}`}
+              className={`p-2 rounded-lg transition-colors ${
+                isRepeat ? 'text-primary' : 'text-gray-400 hover:text-white'
+              }`}
               title="Repeat"
             >
               <Repeat className="w-4 h-4" />
@@ -266,7 +300,9 @@ const MusicPlayer = () => {
           </div>
 
           <div className="w-full max-w-md flex items-center gap-3">
-            <span className="text-xs text-gray-400 w-10 text-right">{formatTime(progress)}</span>
+            <span className="text-xs text-gray-400 w-10 text-right tabular-nums">
+              {formatTime(progress)}
+            </span>
             <div className="flex-1 relative">
               <input
                 type="range"
@@ -276,18 +312,23 @@ const MusicPlayer = () => {
                 onChange={handleSeek}
                 className="w-full h-1 bg-surface rounded-full appearance-none cursor-pointer accent-primary"
               />
-              <div 
+              <div
                 className="absolute top-0 left-0 h-1 bg-primary rounded-full pointer-events-none"
-                style={{ width: `${duration ? (progress / duration) * 100 : 0}%` }}
+                style={{ width: `${progressPercent}%` }}
               />
             </div>
-            <span className="text-xs text-gray-400 w-10">{formatTime(duration)}</span>
+            <span className="text-xs text-gray-400 w-10 tabular-nums">
+              {formatTime(duration)}
+            </span>
           </div>
         </div>
 
         {/* Volume & Queue */}
         <div className="flex items-center gap-3 w-1/4 justify-end">
-          <button className="p-2 hover:bg-white/5 rounded-lg text-gray-400 hover:text-white transition-colors relative" title={`Queue (${queueCount})`}>
+          <button
+            className="p-2 hover:bg-white/5 rounded-lg text-gray-400 hover:text-white transition-colors relative"
+            title={`Queue (${queueCount})`}
+          >
             <ListMusic className="w-5 h-5" />
             {queueCount > 1 && (
               <span className="absolute -top-1 -right-1 w-4 h-4 bg-primary text-white text-[10px] rounded-full flex items-center justify-center">
@@ -296,11 +337,15 @@ const MusicPlayer = () => {
             )}
           </button>
           <div className="flex items-center gap-2">
-            <button 
+            <button
               onClick={() => setIsMuted(!isMuted)}
               className="p-2 hover:bg-white/5 rounded-lg text-gray-400 hover:text-white transition-colors"
             >
-              {isMuted ? <VolumeX className="w-5 h-5" /> : <Volume2 className="w-5 h-5" />}
+              {isMuted ? (
+                <VolumeX className="w-5 h-5" />
+              ) : (
+                <Volume2 className="w-5 h-5" />
+              )}
             </button>
             <input
               type="range"
