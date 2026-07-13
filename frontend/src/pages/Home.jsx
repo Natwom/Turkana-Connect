@@ -76,7 +76,8 @@ const Home = () => {
         let errors = []
 
         try {
-          const trendingRes = await songsApi.getTrendingSongs(12)
+          // TOP 4 TRENDING ONLY
+          const trendingRes = await songsApi.getTrendingSongs(4)
           trendingData = Array.isArray(trendingRes.data) ? trendingRes.data : []
         } catch (e) {
           console.error('Trending fetch failed:', e.message)
@@ -84,7 +85,8 @@ const Home = () => {
         }
 
         try {
-          const newReleasesRes = await songsApi.getNewReleases(12)
+          // TOP 5 NEW RELEASES ONLY
+          const newReleasesRes = await songsApi.getNewReleases(5)
           newReleasesData = Array.isArray(newReleasesRes.data) ? newReleasesRes.data : []
         } catch (e) {
           console.error('New releases fetch failed:', e.message)
@@ -118,10 +120,11 @@ const Home = () => {
           users: featuredArtistsData.reduce((acc, a) => acc + (a.followers_count || 0), 0)
         })
 
+        // FOR YOU — ONLY 4 ITEMS
         const mixed = [...trendingData, ...newReleasesData].filter((song, index, self) =>
           index === self.findIndex((s) => s.id === song.id)
         )
-        setForYouSongs(mixed.slice(0, 12))
+        setForYouSongs(mixed.slice(0, 4))
 
         if (errors.length >= 3) {
           setError('Unable to load content. Please try again.')
@@ -145,8 +148,9 @@ const Home = () => {
   const fetchFollowingFeed = async () => {
     setFeedLoading(true)
     try {
+      // FOLLOWING — ONLY 4 ITEMS
       const [feedRes, listRes] = await Promise.all([
-        artistsApi.getFollowingFeed(12).catch(() => ({ data: [] })),
+        artistsApi.getFollowingFeed(4).catch(() => ({ data: [] })),
         artistsApi.getFollowingList().catch(() => ({ data: [] }))
       ])
       setFollowingSongs(Array.isArray(feedRes.data) ? feedRes.data : [])
@@ -337,6 +341,7 @@ const Home = () => {
         </div>
       </motion.section>
 
+      {/* FOR YOU / FOLLOWING — 4 ITEMS EACH */}
       <section className="px-4 md:px-8 py-4">
         <div className="flex items-center gap-2 mb-4">
           {feedTabs.map((tab) => (
@@ -373,7 +378,7 @@ const Home = () => {
             {forYouSongs.length === 0 ? (
               <div className="text-center py-8 text-gray-500 text-sm">No songs available yet</div>
             ) : (
-              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-3">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                 {forYouSongs.map((song, i) => (
                   <motion.div
                     key={song.id}
@@ -473,7 +478,7 @@ const Home = () => {
                   ))}
                 </div>
 
-                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-3">
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                   {followingSongs.map((song, i) => (
                     <motion.div
                       key={song.id}
@@ -516,6 +521,7 @@ const Home = () => {
         )}
       </section>
 
+      {/* TRENDING — TOP 4 ONLY */}
       <section className="px-4 md:px-8 py-4">
         <div className="flex items-end justify-between mb-4">
           <div className="flex items-center gap-2">
@@ -530,7 +536,7 @@ const Home = () => {
         {trending.length === 0 ? (
           <div className="text-center py-8 text-gray-500 text-sm">No trending songs yet</div>
         ) : (
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-3">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             {trending.map((song, i) => (
               <motion.div
                 key={song.id}
@@ -631,7 +637,7 @@ const Home = () => {
         )}
       </section>
 
-      {/* NEW RELEASES — shows upload time, newest on top */}
+      {/* NEW RELEASES — TOP 5 ONLY, SHOWS UPLOAD TIME */}
       <section className="px-4 md:px-8 py-4">
         <div className="flex items-end justify-between mb-4">
           <div className="flex items-center gap-2">
@@ -671,7 +677,7 @@ const Home = () => {
                   <h3 className="font-semibold text-sm truncate group-hover:text-primary transition-colors">{song.title}</h3>
                   <p className="text-xs text-gray-500 truncate">{getArtistName(song)}</p>
                 </div>
-                {/* SHOWS UPLOAD TIME instead of duration */}
+                {/* SHOWS UPLOAD TIME */}
                 <span className="text-xs text-gray-600 font-medium whitespace-nowrap">
                   {formatTimeAgo(song.created_at)}
                 </span>
