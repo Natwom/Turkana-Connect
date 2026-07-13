@@ -65,29 +65,35 @@ const Home = () => {
   const [modalData, setModalData] = useState([])
   const [modalLoading, setModalLoading] = useState(false)
 
-  // FULLSCREEN PRE-ROLL AD STATE
+  // ==================== FULLSCREEN PRE-ROLL AD ====================
   const [showAd, setShowAd] = useState(true)
   const [adTimeLeft, setAdTimeLeft] = useState(5)
   const [canSkip, setCanSkip] = useState(false)
   const [adSlide, setAdSlide] = useState(0)
-  const adTimerRef = useRef(null)
 
-  // Ad slides
   const adSlides = [
-    { icon: ShoppingBag, text: 'Summer Sale', sub: 'Up to 70% OFF', color: 'from-emerald-500 to-teal-600' },
-    { icon: Truck, text: 'Free Delivery', sub: 'Same-day in your city', color: 'from-cyan-500 to-blue-600' },
-    { icon: Smartphone, text: 'Latest Tech', sub: 'Phones, Laptops & More', color: 'from-violet-500 to-purple-600' },
-    { icon: Tag, text: 'Flash Deals', sub: 'Every 6 hours', color: 'from-amber-500 to-orange-600' },
+    { icon: ShoppingBag, title: 'Summer Sale', subtitle: 'Up to 70% OFF Everything', color: 'from-emerald-500 to-teal-600' },
+    { icon: Truck, title: 'Free Delivery', subtitle: 'Same-day in your city', color: 'from-cyan-500 to-blue-600' },
+    { icon: Smartphone, title: 'Latest Tech', subtitle: 'Phones, Laptops & Gadgets', color: 'from-violet-500 to-purple-600' },
+    { icon: Gem, title: 'Flash Deals', subtitle: 'New deals every 6 hours', color: 'from-amber-500 to-orange-600' },
   ]
 
-  // Auto-start ad countdown
+  // Lock body scroll while ad is showing
+  useEffect(() => {
+    if (showAd) {
+      document.body.style.overflow = 'hidden'
+    } else {
+      document.body.style.overflow = ''
+    }
+    return () => { document.body.style.overflow = '' }
+  }, [showAd])
+
+  // Ad countdown, skip timer, and slide rotation
   useEffect(() => {
     if (!showAd) return
 
-    // Enable skip after 2 seconds
     const skipTimer = setTimeout(() => setCanSkip(true), 2000)
 
-    // Countdown timer
     const countdown = setInterval(() => {
       setAdTimeLeft((prev) => {
         if (prev <= 1) {
@@ -99,10 +105,9 @@ const Home = () => {
       })
     }, 1000)
 
-    // Slide rotation
     const slideTimer = setInterval(() => {
       setAdSlide((prev) => (prev + 1) % adSlides.length)
-    }, 1200)
+    }, 1500)
 
     return () => {
       clearTimeout(skipTimer)
@@ -111,9 +116,8 @@ const Home = () => {
     }
   }, [showAd])
 
-  const handleSkipAd = () => {
-    setShowAd(false)
-  }
+  const handleSkipAd = () => setShowAd(false)
+  // ==================== END AD ====================
 
   useEffect(() => {
     const fetchData = async () => {
@@ -292,6 +296,121 @@ const Home = () => {
     }
   }
 
+  // ==================== AD OVERLAY — COMPLETELY BLOCKS HOME ====================
+  if (showAd) {
+    const CurrentIcon = adSlides[adSlide].icon
+
+    return (
+      <div className="fixed inset-0 z-[9999] bg-black flex flex-col">
+        {/* Animated background */}
+        <div className="absolute inset-0 overflow-hidden">
+          <div className="absolute top-1/4 left-1/4 w-[500px] h-[500px] bg-emerald-600/15 rounded-full blur-[120px] animate-pulse" />
+          <div className="absolute bottom-1/4 right-1/4 w-[500px] h-[500px] bg-cyan-600/15 rounded-full blur-[120px] animate-pulse delay-700" />
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-teal-600/10 rounded-full blur-[150px]" />
+          <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.02)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.02)_1px,transparent_1px)] bg-[size:60px_60px]" />
+        </div>
+
+        {/* Top bar */}
+        <div className="relative z-10 flex items-center justify-between p-4 md:p-6">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center">
+              <ShoppingBag className="w-5 h-5 text-white" />
+            </div>
+            <div>
+              <p className="text-white font-bold text-sm">ApiaroShop</p>
+              <p className="text-gray-500 text-xs flex items-center gap-1">
+                <span className="w-1.5 h-1.5 bg-red-500 rounded-full animate-pulse" />
+                Sponsored
+              </p>
+            </div>
+          </div>
+          
+          <div className="flex items-center gap-3">
+            <div className="px-4 py-2 bg-white/10 backdrop-blur-md rounded-full border border-white/10">
+              <span className="text-white text-sm font-mono font-bold">{adTimeLeft}s</span>
+            </div>
+            {canSkip ? (
+              <motion.button
+                initial={{ opacity: 0, scale: 0.8 }}
+                animate={{ opacity: 1, scale: 1 }}
+                onClick={handleSkipAd}
+                className="flex items-center gap-2 px-4 py-2 bg-white/10 hover:bg-white/20 backdrop-blur-md rounded-full border border-white/10 text-white text-sm font-medium transition-colors"
+              >
+                <SkipForward className="w-4 h-4" />
+                Skip
+              </motion.button>
+            ) : (
+              <div className="px-4 py-2 bg-white/5 rounded-full border border-white/5 text-gray-500 text-sm">
+                Skip in {Math.max(0, adTimeLeft - 3)}s
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Main content */}
+        <div className="relative z-10 flex-1 flex flex-col items-center justify-center px-6">
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={adSlide}
+              initial={{ opacity: 0, y: 40, scale: 0.9 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: -40, scale: 1.1 }}
+              transition={{ duration: 0.4 }}
+              className="flex flex-col items-center text-center max-w-lg"
+            >
+              <div className={`w-28 h-28 md:w-40 md:h-40 rounded-3xl bg-gradient-to-br ${adSlides[adSlide].color} flex items-center justify-center mb-8 shadow-2xl shadow-emerald-500/20`}>
+                <CurrentIcon className="w-14 h-14 md:w-20 md:h-20 text-white" />
+              </div>
+              
+              <h2 className="text-5xl md:text-7xl font-black text-white mb-3 tracking-tight">
+                {adSlides[adSlide].title}
+              </h2>
+              <p className="text-xl md:text-2xl font-bold text-emerald-400">
+                {adSlides[adSlide].subtitle}
+              </p>
+            </motion.div>
+          </AnimatePresence>
+
+          {/* Slide dots */}
+          <div className="flex items-center gap-2 mt-10">
+            {adSlides.map((_, i) => (
+              <motion.div
+                key={i}
+                animate={{ width: i === adSlide ? 32 : 8 }}
+                className={`h-2 rounded-full ${i === adSlide ? 'bg-emerald-400' : 'bg-white/20'}`}
+              />
+            ))}
+          </div>
+
+          {/* CTA Button */}
+          <motion.button
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.5 }}
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            onClick={() => window.open('https://apiaro-frontend.onrender.com?utm_source=apiaro&utm_medium=video_ad&utm_campaign=install', '_blank')}
+            className="mt-10 flex items-center gap-2 px-8 py-4 bg-emerald-500 hover:bg-emerald-400 text-white rounded-2xl font-bold text-base transition-all shadow-xl shadow-emerald-500/25"
+          >
+            <ExternalLink className="w-5 h-5" />
+            Visit ApiaroShop
+          </motion.button>
+        </div>
+
+        {/* Bottom progress bar */}
+        <div className="relative z-10 h-1.5 bg-white/10">
+          <motion.div
+            className="h-full bg-gradient-to-r from-emerald-400 to-cyan-400"
+            initial={{ width: '100%' }}
+            animate={{ width: '0%' }}
+            transition={{ duration: 5, ease: 'linear' }}
+          />
+        </div>
+      </div>
+    )
+  }
+  // ==================== END AD — HOME CONTENT ONLY RENDERS AFTER THIS ====================
+
   if (loading) {
     return (
       <div className="flex flex-col items-center justify-center h-screen gap-4">
@@ -321,136 +440,13 @@ const Home = () => {
     { id: 'following', label: 'Following', icon: UserCheck },
   ]
 
-  const CurrentAdIcon = adSlides[adSlide].icon
-
   return (
-    <div className="space-y-0 pb-10">
-
-      {/* FULLSCREEN PRE-ROLL ADVERT OVERLAY */}
-      <AnimatePresence>
-        {showAd && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0, y: -50, scale: 0.95 }}
-            transition={{ duration: 0.5 }}
-            className="fixed inset-0 z-[100] bg-black flex flex-col items-center justify-center"
-          >
-            {/* Animated background */}
-            <div className="absolute inset-0 overflow-hidden">
-              <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-emerald-600/20 rounded-full blur-[100px] animate-pulse" />
-              <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-cyan-600/20 rounded-full blur-[100px] animate-pulse delay-500" />
-              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-teal-600/10 rounded-full blur-[120px]" />
-              
-              {/* Grid pattern overlay */}
-              <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.03)_1px,transparent_1px)] bg-[size:50px_50px]" />
-            </div>
-
-            {/* Top bar: brand + countdown */}
-            <div className="absolute top-0 left-0 right-0 flex items-center justify-between p-6 z-10">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center">
-                  <ShoppingBag className="w-5 h-5 text-white" />
-                </div>
-                <div>
-                  <p className="text-white font-bold text-sm">ApiaroShop</p>
-                  <p className="text-gray-500 text-xs">Sponsored Advertisement</p>
-                </div>
-              </div>
-              
-              <div className="flex items-center gap-3">
-                <div className="px-4 py-2 bg-white/10 backdrop-blur-md rounded-full border border-white/10">
-                  <span className="text-white text-sm font-mono font-bold">{adTimeLeft}s</span>
-                </div>
-                {canSkip ? (
-                  <motion.button
-                    initial={{ opacity: 0, scale: 0.8 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    onClick={handleSkipAd}
-                    className="flex items-center gap-2 px-4 py-2 bg-white/10 hover:bg-white/20 backdrop-blur-md rounded-full border border-white/10 text-white text-sm font-medium transition-colors"
-                  >
-                    <SkipForward className="w-4 h-4" />
-                    Skip Ad
-                  </motion.button>
-                ) : (
-                  <div className="px-4 py-2 bg-white/5 rounded-full border border-white/5 text-gray-500 text-sm">
-                    Skip in {adTimeLeft > 2 ? adTimeLeft - 2 : 0}s
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* Main animated content */}
-            <div className="relative z-10 flex flex-col items-center justify-center text-center px-4 max-w-2xl">
-              <AnimatePresence mode="wait">
-                <motion.div
-                  key={adSlide}
-                  initial={{ opacity: 0, y: 40, scale: 0.9 }}
-                  animate={{ opacity: 1, y: 0, scale: 1 }}
-                  exit={{ opacity: 0, y: -40, scale: 1.1 }}
-                  transition={{ duration: 0.4 }}
-                  className="flex flex-col items-center"
-                >
-                  <div className={`w-32 h-32 md:w-40 md:h-40 rounded-3xl bg-gradient-to-br ${adSlides[adSlide].color} flex items-center justify-center mb-8 shadow-2xl shadow-emerald-500/20`}>
-                    <CurrentAdIcon className="w-16 h-16 md:w-20 md:h-20 text-white" />
-                  </div>
-                  
-                  <h2 className="text-5xl md:text-7xl font-black text-white mb-4 tracking-tight">
-                    {adSlides[adSlide].text}
-                  </h2>
-                  <p className="text-xl md:text-2xl font-bold text-emerald-400 mb-8">
-                    {adSlides[adSlide].sub}
-                  </p>
-                </motion.div>
-              </AnimatePresence>
-
-              {/* Progress dots */}
-              <div className="flex items-center gap-3 mt-4">
-                {adSlides.map((_, i) => (
-                  <motion.div
-                    key={i}
-                    className={`h-2 rounded-full transition-all duration-300 ${
-                      i === adSlide ? 'w-8 bg-emerald-400' : 'w-2 bg-white/20'
-                    }`}
-                  />
-                ))}
-              </div>
-
-              {/* CTA */}
-              <motion.button
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.5 }}
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                onClick={() => {
-                  window.open('https://apiaro-frontend.onrender.com?utm_source=apiaro&utm_medium=video_ad&utm_campaign=install', '_blank')
-                }}
-                className="mt-10 flex items-center gap-3 px-8 py-4 bg-emerald-500 hover:bg-emerald-400 text-white rounded-2xl font-bold text-lg transition-all shadow-xl shadow-emerald-500/30"
-              >
-                <ExternalLink className="w-5 h-5" />
-                Visit ApiaroShop
-              </motion.button>
-            </div>
-
-            {/* Bottom progress bar */}
-            <div className="absolute bottom-0 left-0 right-0 h-1.5 bg-white/10">
-              <motion.div
-                className="h-full bg-gradient-to-r from-emerald-400 to-cyan-400"
-                initial={{ width: '100%' }}
-                animate={{ width: '0%' }}
-                transition={{ duration: 5, ease: 'linear' }}
-              />
-            </div>
-
-            {/* Corner decorations */}
-            <div className="absolute bottom-8 left-8 text-gray-600 text-xs">
-              Ad will close automatically
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
+    <motion.div 
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.4 }}
+      className="space-y-0 pb-10"
+    >
       <div className="px-4 md:px-8 pt-4 pb-2">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
@@ -516,35 +512,29 @@ const Home = () => {
         </div>
       </motion.section>
 
-      {/* Inline fallback banner (shown after ad is skipped) */}
-      {!showAd && (
-        <motion.section
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="px-4 md:px-8 py-4"
-        >
-          <div className="relative rounded-2xl overflow-hidden bg-gradient-to-r from-emerald-900/50 to-teal-900/50 border border-emerald-500/20 p-4 flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center flex-shrink-0">
-                <ShoppingBag className="w-6 h-6 text-white" />
-              </div>
-              <div>
-                <p className="text-white font-bold text-sm">ApiaroShop</p>
-                <p className="text-gray-400 text-xs">Shop Smarter, Live Better • Same-day delivery</p>
-              </div>
+      {/* Inline banner (shown after ad is dismissed) */}
+      <section className="px-4 md:px-8 py-4">
+        <div className="relative rounded-2xl overflow-hidden bg-gradient-to-r from-emerald-900/50 to-teal-900/50 border border-emerald-500/20 p-4 flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center flex-shrink-0">
+              <ShoppingBag className="w-6 h-6 text-white" />
             </div>
-            <a
-              href="https://apiaro-frontend.onrender.com?utm_source=apiaro&utm_medium=banner&utm_campaign=install"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center gap-2 px-4 py-2 bg-emerald-500 hover:bg-emerald-400 text-white rounded-lg text-sm font-bold transition-colors"
-            >
-              <ExternalLink className="w-4 h-4" />
-              Visit
-            </a>
+            <div>
+              <p className="text-white font-bold text-sm">ApiaroShop</p>
+              <p className="text-gray-400 text-xs">Shop Smarter, Live Better • Same-day delivery</p>
+            </div>
           </div>
-        </motion.section>
-      )}
+          <a
+            href="https://apiaro-frontend.onrender.com?utm_source=apiaro&utm_medium=banner&utm_campaign=install"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-2 px-4 py-2 bg-emerald-500 hover:bg-emerald-400 text-white rounded-lg text-sm font-bold transition-colors"
+          >
+            <ExternalLink className="w-4 h-4" />
+            Visit
+          </a>
+        </div>
+      </section>
 
       {/* FOR YOU / FOLLOWING */}
       <section className="px-4 md:px-8 py-4">
@@ -1112,7 +1102,7 @@ const Home = () => {
           </motion.div>
         )}
       </AnimatePresence>
-    </div>
+    </motion.div>
   )
 }
 
