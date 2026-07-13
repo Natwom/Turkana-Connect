@@ -10,7 +10,8 @@ import {
   TrendingUp, Disc, Users, Sparkles, Play, ChevronRight,
   Headphones, Flame, Clock, Star, ArrowRight, Music, Mic2,
   Award, Heart, Share2, Eye, X,
-  Trophy, Zap, History, Compass, UserCheck, Mic, Bell, Plus
+  Trophy, Zap, History, Compass, UserCheck, Mic, Bell, Plus,
+  ShoppingBag, ExternalLink
 } from 'lucide-react'
 
 const getImageUrl = (path) => {
@@ -340,6 +341,48 @@ const Home = () => {
           </div>
         </div>
       </motion.section>
+
+      {/* PARTNER AD BANNER — E-COMMERCE APP */}
+      <section className="px-4 md:px-8 py-4">
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4 }}
+          className="relative rounded-2xl overflow-hidden bg-gradient-to-r from-emerald-600/20 via-teal-600/20 to-cyan-600/20 border border-emerald-500/20 p-5 md:p-6"
+        >
+          <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/10 rounded-full blur-2xl translate-x-1/2 -translate-y-1/2" />
+          
+          <div className="relative z-10 flex flex-col md:flex-row items-center gap-4 md:gap-6">
+            {/* Partner Logo Placeholder */}
+            <div className="w-14 h-14 md:w-16 md:h-16 rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center flex-shrink-0 shadow-lg">
+              <ShoppingBag className="w-7 h-7 md:w-8 md:h-8 text-white" />
+            </div>
+            
+            <div className="flex-1 text-center md:text-left">
+              <div className="flex items-center justify-center md:justify-start gap-2 mb-1">
+                <span className="px-2 py-0.5 bg-emerald-500/20 text-emerald-400 rounded text-[10px] font-bold uppercase tracking-wider border border-emerald-500/20">
+                  Sponsored
+                </span>
+                <span className="text-[10px] text-gray-500">Partner</span>
+              </div>
+              <h3 className="text-lg md:text-xl font-bold">ShopSwift — Shop Smarter, Live Better</h3>
+              <p className="text-sm text-gray-400 mt-1 max-w-lg">
+                Discover trending fashion, electronics, and home essentials with fast delivery and exclusive deals. Your next favorite find is one tap away.
+              </p>
+            </div>
+            
+            <a
+              href="https://partner-ecommerce-app.com?utm_source=apiaro&utm_medium=banner&utm_campaign=music_partnership"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-2 px-5 py-2.5 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl font-semibold text-sm transition-all hover:scale-105 whitespace-nowrap shadow-lg shadow-emerald-500/20"
+            >
+              <ExternalLink className="w-4 h-4" />
+              Shop Now
+            </a>
+          </div>
+        </motion.div>
+      </section>
 
       {/* FOR YOU / FOLLOWING — 4 ITEMS EACH */}
       <section className="px-4 md:px-8 py-4">
