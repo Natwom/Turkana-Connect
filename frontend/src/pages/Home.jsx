@@ -11,7 +11,7 @@ import {
   Headphones, Flame, Clock, Star, ArrowRight, Music, Mic2,
   Award, Heart, Share2, Eye, X,
   Trophy, Zap, History, Compass, UserCheck, Mic, Bell, Plus,
-  ShoppingBag, Download, Smartphone, PlayCircle, PauseCircle, Volume2, VolumeX
+  ShoppingBag, ExternalLink
 } from 'lucide-react'
 
 const getImageUrl = (path) => {
@@ -64,11 +64,6 @@ const Home = () => {
   const [modalData, setModalData] = useState([])
   const [modalLoading, setModalLoading] = useState(false)
 
-  // Partner video ad state
-  const [isVideoPlaying, setIsVideoPlaying] = useState(false)
-  const [showInstallCTA, setShowInstallCTA] = useState(false)
-  const videoTimerRef = useRef(null)
-
   useEffect(() => {
     const fetchData = async () => {
       try {
@@ -82,6 +77,7 @@ const Home = () => {
         let errors = []
 
         try {
+          // TOP 4 TRENDING ONLY
           const trendingRes = await songsApi.getTrendingSongs(4)
           trendingData = Array.isArray(trendingRes.data) ? trendingRes.data : []
         } catch (e) {
@@ -90,6 +86,7 @@ const Home = () => {
         }
 
         try {
+          // TOP 5 NEW RELEASES ONLY
           const newReleasesRes = await songsApi.getNewReleases(5)
           newReleasesData = Array.isArray(newReleasesRes.data) ? newReleasesRes.data : []
         } catch (e) {
@@ -124,6 +121,7 @@ const Home = () => {
           users: featuredArtistsData.reduce((acc, a) => acc + (a.followers_count || 0), 0)
         })
 
+        // FOR YOU — ONLY 4 ITEMS
         const mixed = [...trendingData, ...newReleasesData].filter((song, index, self) =>
           index === self.findIndex((s) => s.id === song.id)
         )
@@ -151,6 +149,7 @@ const Home = () => {
   const fetchFollowingFeed = async () => {
     setFeedLoading(true)
     try {
+      // FOLLOWING — ONLY 4 ITEMS
       const [feedRes, listRes] = await Promise.all([
         artistsApi.getFollowingFeed(4).catch(() => ({ data: [] })),
         artistsApi.getFollowingList().catch(() => ({ data: [] }))
@@ -191,27 +190,6 @@ const Home = () => {
     } finally {
       setModalLoading(false)
     }
-  }
-
-  // Partner video ad handlers
-  const handlePlayVideo = () => {
-    setIsVideoPlaying(true)
-    setShowInstallCTA(false)
-    // Simulate video ending after 5 seconds
-    if (videoTimerRef.current) clearTimeout(videoTimerRef.current)
-    videoTimerRef.current = setTimeout(() => {
-      setIsVideoPlaying(false)
-      setShowInstallCTA(true)
-    }, 5000)
-  }
-
-  const handlePauseVideo = () => {
-    setIsVideoPlaying(false)
-    if (videoTimerRef.current) clearTimeout(videoTimerRef.current)
-  }
-
-  const handleInstallApp = () => {
-    window.open('https://apiaro-frontend.onrender.com?utm_source=apiaro&utm_medium=video_ad&utm_campaign=install', '_blank')
   }
 
   const handlePlayTrending = (song) => {
@@ -364,164 +342,43 @@ const Home = () => {
         </div>
       </motion.section>
 
-      {/* PARTNER VIDEO AD — ApiaroShop */}
+      {/* PARTNER AD BANNER — E-COMMERCE APP */}
       <section className="px-4 md:px-8 py-4">
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.4 }}
-          className="relative rounded-2xl overflow-hidden bg-black border border-white/10"
+          className="relative rounded-2xl overflow-hidden bg-gradient-to-r from-emerald-600/20 via-teal-600/20 to-cyan-600/20 border border-emerald-500/20 p-5 md:p-6"
         >
-          {/* Video Thumbnail / Player Area */}
-          <div className="relative aspect-video bg-gradient-to-br from-emerald-900 via-teal-900 to-cyan-900">
-            {/* Animated background elements to simulate video motion */}
-            <div className="absolute inset-0">
-              <div className="absolute top-1/4 left-1/4 w-32 h-32 bg-emerald-500/20 rounded-full blur-3xl animate-pulse" />
-              <div className="absolute bottom-1/4 right-1/4 w-40 h-40 bg-cyan-500/20 rounded-full blur-3xl animate-pulse delay-700" />
-              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-teal-500/10 rounded-full blur-3xl" />
+          <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/10 rounded-full blur-2xl translate-x-1/2 -translate-y-1/2" />
+          
+          <div className="relative z-10 flex flex-col md:flex-row items-center gap-4 md:gap-6">
+            {/* Partner Logo Placeholder */}
+            <div className="w-14 h-14 md:w-16 md:h-16 rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center flex-shrink-0 shadow-lg">
+              <ShoppingBag className="w-7 h-7 md:w-8 md:h-8 text-white" />
             </div>
-
-            {/* Product showcase grid (simulated video frames) */}
-            <div className="absolute inset-0 flex items-center justify-center gap-4 p-8 opacity-60">
-              <div className="w-20 h-20 md:w-28 md:h-28 rounded-xl bg-white/10 backdrop-blur-sm border border-white/20 flex items-center justify-center transform -rotate-6">
-                <Smartphone className="w-8 h-8 md:w-12 md:h-12 text-emerald-400" />
+            
+            <div className="flex-1 text-center md:text-left">
+              <div className="flex items-center justify-center md:justify-start gap-2 mb-1">
+                <span className="px-2 py-0.5 bg-emerald-500/20 text-emerald-400 rounded text-[10px] font-bold uppercase tracking-wider border border-emerald-500/20">
+                  Sponsored
+                </span>
+                <span className="text-[10px] text-gray-500">Partner</span>
               </div>
-              <div className="w-24 h-24 md:w-32 md:h-32 rounded-xl bg-white/10 backdrop-blur-sm border border-white/20 flex items-center justify-center transform translate-y-4">
-                <ShoppingBag className="w-10 h-10 md:w-14 md:h-14 text-cyan-400" />
-              </div>
-              <div className="w-20 h-20 md:w-28 md:h-28 rounded-xl bg-white/10 backdrop-blur-sm border border-white/20 flex items-center justify-center transform rotate-6">
-                <Sparkles className="w-8 h-8 md:w-12 md:h-12 text-teal-400" />
-              </div>
+              <h3 className="text-lg md:text-xl font-bold">ShopSwift — Shop Smarter, Live Better</h3>
+              <p className="text-sm text-gray-400 mt-1 max-w-lg">
+                Discover trending fashion, electronics, and home essentials with fast delivery and exclusive deals. Your next favorite find is one tap away.
+              </p>
             </div>
-
-            {/* Video overlay controls */}
-            <div className="absolute inset-0 flex items-center justify-center">
-              {!isVideoPlaying && !showInstallCTA && (
-                <motion.button
-                  initial={{ scale: 0.8, opacity: 0 }}
-                  animate={{ scale: 1, opacity: 1 }}
-                  whileHover={{ scale: 1.1 }}
-                  onClick={handlePlayVideo}
-                  className="w-20 h-20 bg-white/20 backdrop-blur-md border-2 border-white/40 rounded-full flex items-center justify-center hover:bg-white/30 transition-colors"
-                >
-                  <PlayCircle className="w-10 h-10 text-white" />
-                </motion.button>
-              )}
-
-              {isVideoPlaying && (
-                <motion.div
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  className="absolute inset-0 flex items-center justify-center"
-                >
-                  {/* Simulated video progress */}
-                  <div className="absolute bottom-0 left-0 right-0 h-1 bg-white/20">
-                    <motion.div
-                      className="h-full bg-emerald-400"
-                      initial={{ width: '0%' }}
-                      animate={{ width: '100%' }}
-                      transition={{ duration: 5, ease: 'linear' }}
-                    />
-                  </div>
-                  <button
-                    onClick={handlePauseVideo}
-                    className="absolute bottom-4 right-4 p-2 bg-black/50 rounded-full hover:bg-black/70 transition-colors"
-                  >
-                    <PauseCircle className="w-6 h-6 text-white" />
-                  </button>
-                  <div className="absolute top-4 left-4 px-2 py-1 bg-red-500 rounded text-xs font-bold text-white animate-pulse">
-                    ● Sponsored
-                  </div>
-                </motion.div>
-              )}
-
-              {/* INSTALL CTA — appears after video "ends" */}
-              <AnimatePresence>
-                {showInstallCTA && (
-                  <motion.div
-                    initial={{ opacity: 0, scale: 0.9 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    exit={{ opacity: 0 }}
-                    className="absolute inset-0 bg-black/80 backdrop-blur-sm flex flex-col items-center justify-center p-6 text-center"
-                  >
-                    <motion.div
-                      initial={{ y: 20, opacity: 0 }}
-                      animate={{ y: 0, opacity: 1 }}
-                      transition={{ delay: 0.2 }}
-                      className="w-16 h-16 rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center mb-4 shadow-lg shadow-emerald-500/30"
-                    >
-                      <ShoppingBag className="w-8 h-8 text-white" />
-                    </motion.div>
-                    <motion.h3
-                      initial={{ y: 20, opacity: 0 }}
-                      animate={{ y: 0, opacity: 1 }}
-                      transition={{ delay: 0.3 }}
-                      className="text-2xl font-bold text-white mb-2"
-                    >
-                      ApiaroShop
-                    </motion.h3>
-                    <motion.p
-                      initial={{ y: 20, opacity: 0 }}
-                      animate={{ y: 0, opacity: 1 }}
-                      transition={{ delay: 0.4 }}
-                      className="text-sm text-gray-300 mb-1"
-                    >
-                      Shop Smarter, Live Better
-                    </motion.p>
-                    <motion.p
-                      initial={{ y: 20, opacity: 0 }}
-                      animate={{ y: 0, opacity: 1 }}
-                      transition={{ delay: 0.5 }}
-                      className="text-xs text-gray-400 mb-6 max-w-xs"
-                    >
-                      Shop the latest phones, fashion, and home appliances with same-day delivery and flash sales up to 70% off.
-                    </motion.p>
-                    <motion.button
-                      initial={{ y: 20, opacity: 0 }}
-                      animate={{ y: 0, opacity: 1 }}
-                      transition={{ delay: 0.6 }}
-                      whileHover={{ scale: 1.05 }}
-                      whileTap={{ scale: 0.95 }}
-                      onClick={handleInstallApp}
-                      className="flex items-center gap-2 px-8 py-3 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl font-bold text-sm transition-all shadow-lg shadow-emerald-500/30"
-                    >
-                      <Download className="w-5 h-5" />
-                      Install App
-                    </motion.button>
-                    <motion.button
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      transition={{ delay: 0.8 }}
-                      onClick={() => setShowInstallCTA(false)}
-                      className="mt-3 text-xs text-gray-500 hover:text-gray-300 transition-colors"
-                    >
-                      Watch again
-                    </motion.button>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </div>
-          </div>
-
-          {/* Video info bar below player */}
-          <div className="flex items-center justify-between px-4 py-3 bg-[#0a0a0f] border-t border-white/5">
-            <div className="flex items-center gap-3">
-              <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center">
-                <ShoppingBag className="w-4 h-4 text-white" />
-              </div>
-              <div>
-                <p className="text-sm font-semibold text-white">ApiaroShop</p>
-                <p className="text-xs text-gray-500">Sponsored • E-Commerce</p>
-              </div>
-            </div>
+            
             <a
-              href="https://apiaro-frontend.onrender.com?utm_source=apiaro&utm_medium=video_ad&utm_campaign=install"
+              href="https://partner-ecommerce-app.com?utm_source=apiaro&utm_medium=banner&utm_campaign=music_partnership"
               target="_blank"
               rel="noopener noreferrer"
-              className="flex items-center gap-1.5 px-4 py-2 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 rounded-lg text-xs font-semibold transition-colors border border-emerald-500/20"
+              className="flex items-center gap-2 px-5 py-2.5 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl font-semibold text-sm transition-all hover:scale-105 whitespace-nowrap shadow-lg shadow-emerald-500/20"
             >
-              <ExternalLink className="w-3 h-3" />
-              Visit Store
+              <ExternalLink className="w-4 h-4" />
+              Shop Now
             </a>
           </div>
         </motion.div>
@@ -863,6 +720,7 @@ const Home = () => {
                   <h3 className="font-semibold text-sm truncate group-hover:text-primary transition-colors">{song.title}</h3>
                   <p className="text-xs text-gray-500 truncate">{getArtistName(song)}</p>
                 </div>
+                {/* SHOWS UPLOAD TIME */}
                 <span className="text-xs text-gray-600 font-medium whitespace-nowrap">
                   {formatTimeAgo(song.created_at)}
                 </span>
