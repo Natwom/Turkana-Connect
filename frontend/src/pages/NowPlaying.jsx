@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from 'react'
+import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useNavigate } from 'react-router-dom'
 import {
@@ -48,46 +48,18 @@ const NowPlaying = () => {
     setIsShuffle,
     isRepeat,
     setIsRepeat,
+    progress,
+    duration,
+    audioError,
+    seek,
+    setVolume: setAudioVolume,
   } = player
 
   const [isLiked, setIsLiked] = useState(false)
   const [isLikeLoading, setIsLikeLoading] = useState(false)
-  const [progress, setProgress] = useState(0)
-  const [duration, setDuration] = useState(0)
+  const [showQueue, setShowQueue] = useState(false)
   const [volume, setVolume] = useState(0.8)
   const [isMuted, setIsMuted] = useState(false)
-  const [showQueue, setShowQueue] = useState(false)
-  const [audioError, setAudioError] = useState(false)
-  const progressRef = useRef(null)
-
-  // Sync with actual audio element from MusicPlayer
-  useEffect(() => {
-    const audio = document.querySelector('audio')
-    if (!audio) return
-
-    const updateProgress = () => {
-      setProgress(audio.currentTime)
-      setDuration(audio.duration || 0)
-    }
-
-    const handleError = () => setAudioError(true)
-    const handleEnded = () => setAudioError(false)
-
-    audio.addEventListener('timeupdate', updateProgress)
-    audio.addEventListener('loadedmetadata', updateProgress)
-    audio.addEventListener('error', handleError)
-    audio.addEventListener('ended', handleEnded)
-
-    // Initial sync
-    updateProgress()
-
-    return () => {
-      audio.removeEventListener('timeupdate', updateProgress)
-      audio.removeEventListener('loadedmetadata', updateProgress)
-      audio.removeEventListener('error', handleError)
-      audio.removeEventListener('ended', handleEnded)
-    }
-  }, [currentSong])
 
   useEffect(() => {
     if (!isAuthenticated || !currentSong?.id) {
@@ -104,13 +76,6 @@ const NowPlaying = () => {
     }
     checkLikeStatus()
   }, [currentSong?.id, isAuthenticated])
-
-  useEffect(() => {
-    const audio = document.querySelector('audio')
-    if (audio) {
-      audio.volume = isMuted ? 0 : volume
-    }
-  }, [volume, isMuted])
 
   const handleLikeToggle = async () => {
     if (!isAuthenticated) {
@@ -139,14 +104,22 @@ const NowPlaying = () => {
   }
 
   const handleSeek = (e) => {
-    const audio = document.querySelector('audio')
     const rect = e.currentTarget.getBoundingClientRect()
     const percent = (e.clientX - rect.left) / rect.width
     const time = percent * (duration || 0)
-    if (audio && !isNaN(time)) {
-      audio.currentTime = time
-      setProgress(time)
-    }
+    seek?.(time)
+  }
+
+  const handleVolumeChange = (e) => {
+    const newVol = parseFloat(e.target.value)
+    setVolume(newVol)
+    setAudioVolume?.(isMuted ? 0 : newVol)
+  }
+
+  const toggleMute = () => {
+    const newMuted = !isMuted
+    setIsMuted(newMuted)
+    setAudioVolume?.(newMuted ? 0 : volume)
   }
 
   const formatTime = (seconds) => {
@@ -156,7 +129,7 @@ const NowPlaying = () => {
     return `${mins}:${secs.toString().padStart(2, '0')}`
   }
 
-  const handlePlayFromQueue = (song, index) => {
+  const handlePlayFromQueue = (song) => {
     if (player?.playSong) {
       player.playSong(song, queue)
     }
@@ -215,7 +188,6 @@ const NowPlaying = () => {
           }}
           className="relative"
         >
-          {/* Glow behind album art */}
           <div 
             className="absolute inset-0 rounded-3xl blur-2xl opacity-30 scale-110"
             style={{ background: 'linear-gradient(135deg, #7C3AED, #EC4899)' }}
@@ -276,16 +248,13 @@ const NowPlaying = () => {
       {/* Progress Bar */}
       <div className="relative z-10 px-8 py-2">
         <div 
-          ref={progressRef}
           className="h-1.5 bg-white/10 rounded-full overflow-hidden cursor-pointer group"
           onClick={handleSeek}
         >
           <motion.div 
             className="h-full bg-gradient-to-r from-violet-500 to-fuchsia-500 rounded-full"
             style={{ width: `${progressPercent}%` }}
-            layoutId="progress"
           />
-          {/* Hover seek indicator */}
           <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity">
             <div 
               className="h-full w-3 bg-white rounded-full shadow-lg absolute top-1/2 -translate-y-1/2 -translate-x-1/2"
@@ -361,7 +330,7 @@ const NowPlaying = () => {
 
         <div className="flex items-center gap-3">
           <button
-            onClick={() => setIsMuted(!isMuted)}
+            onClick={toggleMute}
             className="p-2 hover:bg-white/5 rounded-lg text-gray-400 hover:text-white transition-colors"
           >
             {isMuted ? <VolumeX className="w-5 h-5" /> : <Volume2 className="w-5 h-5" />}
@@ -372,7 +341,7 @@ const NowPlaying = () => {
             max={1}
             step={0.01}
             value={isMuted ? 0 : volume}
-            onChange={(e) => setVolume(parseFloat(e.target.value))}
+            onChange={handleVolumeChange}
             className="w-24 h-1 bg-white/10 rounded-full appearance-none cursor-pointer accent-primary"
           />
         </div>
@@ -399,7 +368,7 @@ const NowPlaying = () => {
                     return (
                       <button
                         key={`${song.id}-${i}`}
-                        onClick={() => handlePlayFromQueue(song, i)}
+                        onClick={() => handlePlayFromQueue(song)}
                         className={`w-full flex items-center gap-3 p-2.5 rounded-xl transition-all ${
                           isActive 
                             ? 'bg-white/10' 

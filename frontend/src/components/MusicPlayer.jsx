@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react'
+import { useState } from 'react'
 import { motion } from 'framer-motion'
 import { useNavigate } from 'react-router-dom'
 import {
@@ -19,19 +19,6 @@ import { useAuth } from '../context/AuthContext'
 import { useSettings } from '../context/SettingsContext'
 import likesApi from '../api/likes'
 
-const API_BASE = import.meta.env.VITE_API_URL || 'https://turkana-connect-api.onrender.com'
-
-const normalizeUrl = (path) => {
-  if (!path) return ''
-  if (path.startsWith('http')) return path
-  const base = API_BASE.endsWith('/') ? API_BASE.slice(0, -1) : API_BASE
-  const cleanPath = path.startsWith('/') ? path : `/${path}`
-  return `${base}${cleanPath}`
-}
-
-const getAudioUrl = (path) => normalizeUrl(path)
-const getImageUrl = (path) => normalizeUrl(path) || '/default-cover.jpg'
-
 const MusicPlayer = () => {
   const navigate = useNavigate()
   const player = usePlayer() || {}
@@ -48,118 +35,17 @@ const MusicPlayer = () => {
     isRepeat,
     setIsRepeat,
     queue,
+    progress,
+    duration,
+    audioError,
+    seek,
+    setVolume: setAudioVolume,
   } = player
 
-  const [progress, setProgress] = useState(0)
-  const [duration, setDuration] = useState(0)
   const [volume, setVolume] = useState(0.8)
   const [isMuted, setIsMuted] = useState(false)
-  const [audioError, setAudioError] = useState(false)
   const [isLiked, setIsLiked] = useState(false)
   const [isLikeLoading, setIsLikeLoading] = useState(false)
-  const audioRef = useRef(null)
-
-  useEffect(() => {
-    if (settings?.normalize_volume) {
-      setVolume(0.7)
-    }
-  }, [settings?.normalize_volume])
-
-  const handleEnded = () => {
-    if (isRepeat) {
-      if (audioRef.current) {
-        audioRef.current.currentTime = 0
-        audioRef.current.play().catch((err) => {
-          console.error('Repeat play failed:', err)
-        })
-      }
-    } else if (settings?.autoplay) {
-      playNext?.()
-    } else {
-      togglePlay?.()
-    }
-  }
-
-  useEffect(() => {
-    if (!isAuthenticated || !currentSong?.id) {
-      setIsLiked(false)
-      return
-    }
-    const checkLikeStatus = async () => {
-      try {
-        const res = await likesApi.checkLike(currentSong.id)
-        setIsLiked(res.data.liked)
-      } catch (err) {
-        setIsLiked(false)
-      }
-    }
-    checkLikeStatus()
-  }, [currentSong?.id, isAuthenticated])
-
-  useEffect(() => {
-    if (currentSong && audioRef.current) {
-      const audioUrl = getAudioUrl(currentSong.audio_url)
-      console.log('Loading audio:', audioUrl)
-      setAudioError(false)
-      setProgress(0)
-      setDuration(0)
-
-      audioRef.current.src = audioUrl
-      audioRef.current.load()
-
-      if (isPlaying) {
-        const playPromise = audioRef.current.play()
-        if (playPromise !== undefined) {
-          playPromise.catch((err) => {
-            console.error('Audio play failed:', err)
-            setAudioError(true)
-          })
-        }
-      }
-    }
-  }, [currentSong])
-
-  useEffect(() => {
-    if (!audioRef.current) return
-
-    if (isPlaying) {
-      const playPromise = audioRef.current.play()
-      if (playPromise !== undefined) {
-        playPromise.catch((err) => {
-          console.error('Audio play failed:', err)
-          setAudioError(true)
-        })
-      }
-    } else {
-      audioRef.current.pause()
-    }
-  }, [isPlaying])
-
-  useEffect(() => {
-    if (audioRef.current) {
-      audioRef.current.volume = isMuted ? 0 : volume
-    }
-  }, [volume, isMuted])
-
-  const handleTimeUpdate = () => {
-    if (audioRef.current) {
-      setProgress(audioRef.current.currentTime)
-      setDuration(audioRef.current.duration || 0)
-    }
-  }
-
-  const handleSeek = (e) => {
-    const time = parseFloat(e.target.value)
-    if (audioRef.current && !isNaN(time)) {
-      audioRef.current.currentTime = time
-      setProgress(time)
-    }
-  }
-
-  const handleAudioError = (e) => {
-    console.error('Audio element error:', e)
-    setAudioError(true)
-  }
 
   const handleLikeToggle = async () => {
     if (!isAuthenticated) {
@@ -178,7 +64,6 @@ const MusicPlayer = () => {
         setIsLiked(true)
       }
     } catch (err) {
-      console.error('Like toggle failed:', err)
       try {
         const res = await likesApi.checkLike(currentSong.id)
         setIsLiked(res.data.liked)
@@ -186,6 +71,23 @@ const MusicPlayer = () => {
     } finally {
       setIsLikeLoading(false)
     }
+  }
+
+  const handleVolumeChange = (e) => {
+    const newVol = parseFloat(e.target.value)
+    setVolume(newVol)
+    setAudioVolume?.(isMuted ? 0 : newVol)
+  }
+
+  const toggleMute = () => {
+    const newMuted = !isMuted
+    setIsMuted(newMuted)
+    setAudioVolume?.(newMuted ? 0 : volume)
+  }
+
+  const handleSeek = (e) => {
+    const time = parseFloat(e.target.value)
+    seek?.(time)
   }
 
   const formatTime = (seconds) => {
@@ -200,6 +102,16 @@ const MusicPlayer = () => {
   const queueCount = queue?.length || 0
   const progressPercent = duration > 0 ? (progress / duration) * 100 : 0
 
+  const API_BASE = import.meta.env.VITE_API_URL || 'https://turkana-connect-api.onrender.com'
+  const normalizeUrl = (path) => {
+    if (!path) return ''
+    if (path.startsWith('http')) return path
+    const base = API_BASE.endsWith('/') ? API_BASE.slice(0, -1) : API_BASE
+    const cleanPath = path.startsWith('/') ? path : `/${path}`
+    return `${base}${cleanPath}`
+  }
+  const getImageUrl = (path) => normalizeUrl(path) || '/default-cover.jpg'
+
   return (
     <motion.div
       initial={{ y: 100 }}
@@ -207,16 +119,6 @@ const MusicPlayer = () => {
       className="bg-[#0f0f1a]/95 backdrop-blur-xl border-t border-white/10 px-4 py-3 md:px-6 md:py-4 cursor-pointer hover:bg-[#0f0f1a] transition-colors"
       onClick={() => navigate('/now-playing')}
     >
-      <audio
-        ref={audioRef}
-        onTimeUpdate={handleTimeUpdate}
-        onEnded={handleEnded}
-        onLoadedMetadata={handleTimeUpdate}
-        onError={handleAudioError}
-        crossOrigin="anonymous"
-        preload="metadata"
-      />
-
       <div className="flex items-center gap-4">
         {/* Song Info */}
         <div className="flex items-center gap-3 w-1/4 min-w-[200px]">
@@ -363,7 +265,7 @@ const MusicPlayer = () => {
           </button>
           <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
             <button
-              onClick={() => setIsMuted(!isMuted)}
+              onClick={toggleMute}
               className="p-2 hover:bg-white/5 rounded-lg text-gray-400 hover:text-white transition-colors"
             >
               {isMuted ? (
@@ -378,7 +280,7 @@ const MusicPlayer = () => {
               max={1}
               step={0.01}
               value={isMuted ? 0 : volume}
-              onChange={(e) => setVolume(parseFloat(e.target.value))}
+              onChange={handleVolumeChange}
               className="w-20 h-1 bg-surface rounded-full appearance-none cursor-pointer accent-primary"
             />
           </div>

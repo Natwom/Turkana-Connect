@@ -1,4 +1,4 @@
-import { createContext, useState, useCallback, useContext } from 'react'
+import { createContext, useState, useCallback, useContext, useRef, useEffect } from 'react'
 import { recordPlay } from '../api/songs'
 
 export const PlayerContext = createContext(null)
@@ -11,6 +11,12 @@ export const PlayerProvider = ({ children }) => {
   const [isShuffle, setIsShuffle] = useState(false)
   const [isRepeat, setIsRepeat] = useState(false)
   const [history, setHistory] = useState([])
+  const [progress, setProgress] = useState(0)
+  const [duration, setDuration] = useState(0)
+  const [audioError, setAudioError] = useState(false)
+
+  // Audio ref lives HERE in context so it persists across route changes
+  const audioRef = useRef(null)
 
   // Only record play if user is authenticated (token exists)
   const safeRecordPlay = useCallback((songId) => {
@@ -32,6 +38,9 @@ export const PlayerProvider = ({ children }) => {
     setQueue(newQueue)
     setCurrentIndex(actualIndex)
     setIsPlaying(true)
+    setAudioError(false)
+    setProgress(0)
+    setDuration(0)
     setHistory((prev) => [...prev.slice(-49), song])
 
     safeRecordPlay(song.id)
@@ -64,6 +73,9 @@ export const PlayerProvider = ({ children }) => {
     setCurrentIndex(nextIndex)
     setCurrentSong(nextSong)
     setIsPlaying(true)
+    setAudioError(false)
+    setProgress(0)
+    setDuration(0)
     setHistory((prev) => [...prev.slice(-49), nextSong])
 
     safeRecordPlay(nextSong?.id)
@@ -93,6 +105,9 @@ export const PlayerProvider = ({ children }) => {
     setCurrentIndex(prevIndex)
     setCurrentSong(prevSong)
     setIsPlaying(true)
+    setAudioError(false)
+    setProgress(0)
+    setDuration(0)
 
     safeRecordPlay(prevSong?.id)
   }, [queue, currentIndex, isShuffle, history, safeRecordPlay])
@@ -115,6 +130,96 @@ export const PlayerProvider = ({ children }) => {
     setHistory([])
   }, [])
 
+  // Audio element effect — loads new song when currentSong changes
+  useEffect(() => {
+    if (!currentSong || !audioRef.current) return
+
+    const API_BASE = import.meta.env.VITE_API_URL || 'https://turkana-connect-api.onrender.com'
+    const normalizeUrl = (path) => {
+      if (!path) return ''
+      if (path.startsWith('http')) return path
+      const base = API_BASE.endsWith('/') ? API_BASE.slice(0, -1) : API_BASE
+      const cleanPath = path.startsWith('/') ? path : `/${path}`
+      return `${base}${cleanPath}`
+    }
+
+    const audioUrl = normalizeUrl(currentSong.audio_url)
+    console.log('Loading audio:', audioUrl)
+
+    audioRef.current.src = audioUrl
+    audioRef.current.load()
+
+    if (isPlaying) {
+      const playPromise = audioRef.current.play()
+      if (playPromise !== undefined) {
+        playPromise.catch((err) => {
+          console.error('Audio play failed:', err)
+          setAudioError(true)
+        })
+      }
+    }
+  }, [currentSong])
+
+  // Play/pause effect
+  useEffect(() => {
+    if (!audioRef.current) return
+
+    if (isPlaying) {
+      const playPromise = audioRef.current.play()
+      if (playPromise !== undefined) {
+        playPromise.catch((err) => {
+          console.error('Audio play failed:', err)
+          setAudioError(true)
+        })
+      }
+    } else {
+      audioRef.current.pause()
+    }
+  }, [isPlaying])
+
+  // Time update handler
+  const handleTimeUpdate = useCallback(() => {
+    if (audioRef.current) {
+      setProgress(audioRef.current.currentTime)
+      setDuration(audioRef.current.duration || 0)
+    }
+  }, [])
+
+  // Ended handler
+  const handleEnded = useCallback(() => {
+    if (isRepeat) {
+      if (audioRef.current) {
+        audioRef.current.currentTime = 0
+        audioRef.current.play().catch((err) => {
+          console.error('Repeat play failed:', err)
+        })
+      }
+    } else {
+      playNext()
+    }
+  }, [isRepeat, playNext])
+
+  // Error handler
+  const handleAudioError = useCallback(() => {
+    console.error('Audio element error')
+    setAudioError(true)
+  }, [])
+
+  // Seek function
+  const seek = useCallback((time) => {
+    if (audioRef.current && !isNaN(time)) {
+      audioRef.current.currentTime = time
+      setProgress(time)
+    }
+  }, [])
+
+  // Volume function
+  const setVolume = useCallback((vol) => {
+    if (audioRef.current) {
+      audioRef.current.volume = vol
+    }
+  }, [])
+
   return (
     <PlayerContext.Provider
       value={{
@@ -125,6 +230,10 @@ export const PlayerProvider = ({ children }) => {
         isShuffle,
         isRepeat,
         history,
+        progress,
+        duration,
+        audioError,
+        audioRef,
         playSong,
         playNext,
         playPrevious,
@@ -133,8 +242,24 @@ export const PlayerProvider = ({ children }) => {
         clearQueue,
         setIsShuffle,
         setIsRepeat,
+        handleTimeUpdate,
+        handleEnded,
+        handleAudioError,
+        seek,
+        setVolume,
       }}
     >
+      {/* Hidden audio element that persists across all routes */}
+      <audio
+        ref={audioRef}
+        onTimeUpdate={handleTimeUpdate}
+        onEnded={handleEnded}
+        onLoadedMetadata={handleTimeUpdate}
+        onError={handleAudioError}
+        crossOrigin="anonymous"
+        preload="metadata"
+        style={{ display: 'none' }}
+      />
       {children}
     </PlayerContext.Provider>
   )

@@ -46,10 +46,11 @@ function App() {
           <Route path="go-live" element={<GoLive />} />
           <Route path="live" element={<LiveStreams />} />
           <Route path="live/:id" element={<LiveStream />} />
+          {/* Now Playing inside Layout so MusicPlayer stays mounted */}
+          <Route path="now-playing" element={<NowPlaying />} />
         </Route>
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
-        <Route path="/now-playing" element={<NowPlaying />} />
       </Routes>
     </PlayerProvider>
   )
