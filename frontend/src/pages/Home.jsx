@@ -65,18 +65,78 @@ const Home = () => {
   const [modalData, setModalData] = useState([])
   const [modalLoading, setModalLoading] = useState(false)
 
-  // ==================== FULLSCREEN PRE-ROLL AD ====================
+  // ==================== FULLSCREEN PRE-ROLL AD (15s + AUDIO) ====================
+  const AD_DURATION = 15
+  const SKIP_DELAY = 5
+
   const [showAd, setShowAd] = useState(true)
-  const [adTimeLeft, setAdTimeLeft] = useState(5)
+  const [adTimeLeft, setAdTimeLeft] = useState(AD_DURATION)
   const [canSkip, setCanSkip] = useState(false)
   const [adSlide, setAdSlide] = useState(0)
+  const [isMuted, setIsMuted] = useState(true)
+  const audioRef = useRef(null)
 
   const adSlides = [
     { icon: ShoppingBag, title: 'Summer Sale', subtitle: 'Up to 70% OFF Everything', color: 'from-emerald-500 to-teal-600' },
     { icon: Truck, title: 'Free Delivery', subtitle: 'Same-day in your city', color: 'from-cyan-500 to-blue-600' },
     { icon: Smartphone, title: 'Latest Tech', subtitle: 'Phones, Laptops & Gadgets', color: 'from-violet-500 to-purple-600' },
     { icon: Gem, title: 'Flash Deals', subtitle: 'New deals every 6 hours', color: 'from-amber-500 to-orange-600' },
+    { icon: ShoppingBag, title: 'Install Now', subtitle: 'Get the app today', color: 'from-rose-500 to-pink-600' },
   ]
+
+  // Audio setup - plays a synthetic jingle using Web Audio API
+  const playAdJingle = () => {
+    try {
+      const AudioContext = window.AudioContext || window.webkitAudioContext
+      if (!AudioContext) return
+
+      const ctx = new AudioContext()
+      const now = ctx.currentTime
+
+      // Upbeat major chord arpeggio
+      const frequencies = [523.25, 659.25, 783.99, 1046.50, 783.99, 659.25, 523.25, 659.25]
+      const durations = [0.15, 0.15, 0.15, 0.3, 0.15, 0.15, 0.15, 0.4]
+
+      frequencies.forEach((freq, i) => {
+        const osc = ctx.createOscillator()
+        const gain = ctx.createGain()
+
+        osc.type = 'sine'
+        osc.frequency.setValueAtTime(freq, now + i * 0.2)
+
+        gain.gain.setValueAtTime(0.08, now + i * 0.2)
+        gain.gain.exponentialRampToValueAtTime(0.001, now + i * 0.2 + durations[i])
+
+        osc.connect(gain)
+        gain.connect(ctx.destination)
+
+        osc.start(now + i * 0.2)
+        osc.stop(now + i * 0.2 + durations[i])
+      })
+
+      // Add a rhythmic bass note
+      const bass = ctx.createOscillator()
+      const bassGain = ctx.createGain()
+      bass.type = 'triangle'
+      bass.frequency.setValueAtTime(130.81, now)
+      bass.frequency.setValueAtTime(130.81, now + 0.6)
+      bass.frequency.setValueAtTime(164.81, now + 1.2)
+      bass.frequency.setValueAtTime(196.00, now + 1.8)
+
+      bassGain.gain.setValueAtTime(0.12, now)
+      bassGain.gain.exponentialRampToValueAtTime(0.001, now + 2.5)
+
+      bass.connect(bassGain)
+      bassGain.connect(ctx.destination)
+      bass.start(now)
+      bass.stop(now + 2.5)
+
+      return ctx
+    } catch (e) {
+      console.error('Audio play failed:', e)
+      return null
+    }
+  }
 
   // Lock body scroll while ad is showing
   useEffect(() => {
@@ -88,11 +148,21 @@ const Home = () => {
     return () => { document.body.style.overflow = '' }
   }, [showAd])
 
-  // Ad countdown, skip timer, and slide rotation
+  // Ad countdown, skip timer, slide rotation, and audio
   useEffect(() => {
     if (!showAd) return
 
-    const skipTimer = setTimeout(() => setCanSkip(true), 2000)
+    // Play audio on first interaction or auto-play if allowed
+    const audioCtx = playAdJingle()
+
+    // Repeating jingle every 3 seconds
+    const jingleInterval = setInterval(() => {
+      if (!isMuted) {
+        playAdJingle()
+      }
+    }, 3000)
+
+    const skipTimer = setTimeout(() => setCanSkip(true), SKIP_DELAY * 1000)
 
     const countdown = setInterval(() => {
       setAdTimeLeft((prev) => {
@@ -107,16 +177,25 @@ const Home = () => {
 
     const slideTimer = setInterval(() => {
       setAdSlide((prev) => (prev + 1) % adSlides.length)
-    }, 1500)
+    }, 3000)
 
     return () => {
       clearTimeout(skipTimer)
       clearInterval(countdown)
       clearInterval(slideTimer)
+      clearInterval(jingleInterval)
+      if (audioCtx) audioCtx.close()
     }
-  }, [showAd])
+  }, [showAd, isMuted])
 
   const handleSkipAd = () => setShowAd(false)
+
+  const toggleMute = () => {
+    setIsMuted(!isMuted)
+    if (isMuted) {
+      playAdJingle()
+    }
+  }
   // ==================== END AD ====================
 
   useEffect(() => {
@@ -299,6 +378,7 @@ const Home = () => {
   // ==================== AD OVERLAY — COMPLETELY BLOCKS HOME ====================
   if (showAd) {
     const CurrentIcon = adSlides[adSlide].icon
+    const progressPercent = ((AD_DURATION - adTimeLeft) / AD_DURATION) * 100
 
     return (
       <div className="fixed inset-0 z-[9999] bg-black flex flex-col">
@@ -326,9 +406,22 @@ const Home = () => {
           </div>
           
           <div className="flex items-center gap-3">
+            {/* Mute toggle */}
+            <button
+              onClick={toggleMute}
+              className="p-2.5 bg-white/10 hover:bg-white/20 backdrop-blur-md rounded-full border border-white/10 text-white transition-colors"
+            >
+              {isMuted ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
+            </button>
+
+            {/* Countdown */}
             <div className="px-4 py-2 bg-white/10 backdrop-blur-md rounded-full border border-white/10">
-              <span className="text-white text-sm font-mono font-bold">{adTimeLeft}s</span>
+              <span className="text-white text-sm font-mono font-bold">
+                {Math.floor(adTimeLeft / 60)}:{String(adTimeLeft % 60).padStart(2, '0')}
+              </span>
             </div>
+
+            {/* Skip button */}
             {canSkip ? (
               <motion.button
                 initial={{ opacity: 0, scale: 0.8 }}
@@ -341,7 +434,7 @@ const Home = () => {
               </motion.button>
             ) : (
               <div className="px-4 py-2 bg-white/5 rounded-full border border-white/5 text-gray-500 text-sm">
-                Skip in {Math.max(0, adTimeLeft - 3)}s
+                Skip in {Math.max(0, adTimeLeft - (AD_DURATION - SKIP_DELAY))}s
               </div>
             )}
           </div>
@@ -355,7 +448,7 @@ const Home = () => {
               initial={{ opacity: 0, y: 40, scale: 0.9 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: -40, scale: 1.1 }}
-              transition={{ duration: 0.4 }}
+              transition={{ duration: 0.5 }}
               className="flex flex-col items-center text-center max-w-lg"
             >
               <div className={`w-28 h-28 md:w-40 md:h-40 rounded-3xl bg-gradient-to-br ${adSlides[adSlide].color} flex items-center justify-center mb-8 shadow-2xl shadow-emerald-500/20`}>
@@ -395,16 +488,41 @@ const Home = () => {
             <ExternalLink className="w-5 h-5" />
             Visit ApiaroShop
           </motion.button>
+
+          {/* Audio hint */}
+          <motion.p
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 1 }}
+            className="mt-4 text-xs text-gray-600 flex items-center gap-1"
+          >
+            {isMuted ? (
+              <>
+                <VolumeX className="w-3 h-3" /> Tap the speaker icon to unmute
+              </>
+            ) : (
+              <>
+                <Volume2 className="w-3 h-3" /> Sound on
+              </>
+            )}
+          </motion.p>
         </div>
 
         {/* Bottom progress bar */}
         <div className="relative z-10 h-1.5 bg-white/10">
           <motion.div
             className="h-full bg-gradient-to-r from-emerald-400 to-cyan-400"
-            initial={{ width: '100%' }}
-            animate={{ width: '0%' }}
-            transition={{ duration: 5, ease: 'linear' }}
+            initial={{ width: '0%' }}
+            animate={{ width: `${progressPercent}%` }}
+            transition={{ duration: 0.5, ease: 'linear' }}
           />
+        </div>
+
+        {/* Time remaining text */}
+        <div className="relative z-10 text-center py-2">
+          <span className="text-xs text-gray-600">
+            Your music will start in {adTimeLeft} seconds
+          </span>
         </div>
       </div>
     )
