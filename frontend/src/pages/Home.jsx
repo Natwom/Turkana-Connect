@@ -1,9 +1,10 @@
 import { useEffect, useState, useRef } from 'react'
-import { motion, useScroll, useTransform, AnimatePresence } from 'framer-motion'
 import { useNavigate } from 'react-router-dom'
+import { motion, useScroll, useTransform, AnimatePresence } from 'framer-motion'
 import api from '../api/axios'
 import songsApi from '../api/songs'
 import artistsApi from '../api/artists'
+import SongCard from '../components/SongCard'
 import { usePlayer } from '../hooks/usePlayer'
 import { useAuth } from '../context/AuthContext'
 import {
@@ -52,7 +53,6 @@ const Home = () => {
   const [stats, setStats] = useState({ songs: 0, artists: 0, users: 0 })
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
-  const [hoveredSong, setHoveredSong] = useState(null)
   const [hoveredArtist, setHoveredArtist] = useState(null)
 
   const [activeFeedTab, setActiveFeedTab] = useState('forYou')
@@ -84,7 +84,6 @@ const Home = () => {
     { icon: ShoppingBag, title: 'Install Now', subtitle: 'Get the app today', color: 'from-rose-500 to-pink-600' },
   ]
 
-  // Audio setup - plays a synthetic jingle using Web Audio API
   const playAdJingle = () => {
     try {
       const AudioContext = window.AudioContext || window.webkitAudioContext
@@ -93,7 +92,6 @@ const Home = () => {
       const ctx = new AudioContext()
       const now = ctx.currentTime
 
-      // Upbeat major chord arpeggio
       const frequencies = [523.25, 659.25, 783.99, 1046.50, 783.99, 659.25, 523.25, 659.25]
       const durations = [0.15, 0.15, 0.15, 0.3, 0.15, 0.15, 0.15, 0.4]
 
@@ -114,7 +112,6 @@ const Home = () => {
         osc.stop(now + i * 0.2 + durations[i])
       })
 
-      // Add a rhythmic bass note
       const bass = ctx.createOscillator()
       const bassGain = ctx.createGain()
       bass.type = 'triangle'
@@ -138,7 +135,6 @@ const Home = () => {
     }
   }
 
-  // Lock body scroll while ad is showing
   useEffect(() => {
     if (showAd) {
       document.body.style.overflow = 'hidden'
@@ -148,14 +144,11 @@ const Home = () => {
     return () => { document.body.style.overflow = '' }
   }, [showAd])
 
-  // Ad countdown, skip timer, slide rotation, and audio
   useEffect(() => {
     if (!showAd) return
 
-    // Play audio on first interaction or auto-play if allowed
     const audioCtx = playAdJingle()
 
-    // Repeating jingle every 3 seconds
     const jingleInterval = setInterval(() => {
       if (!isMuted) {
         playAdJingle()
@@ -322,33 +315,17 @@ const Home = () => {
     }
   }
 
-  const handlePlayTrending = (song) => {
-    if (player?.playSong) {
-      player.playSong(song, trending)
+  const handlePlayFeatured = () => {
+    if (player?.playSong && featuredSong) {
+      player.playSong(featuredSong, trending)
+      navigate('/now-playing')
     }
   }
 
   const handlePlayNewRelease = (song) => {
     if (player?.playSong) {
       player.playSong(song, newReleases)
-    }
-  }
-
-  const handlePlayFeatured = () => {
-    if (player?.playSong && featuredSong) {
-      player.playSong(featuredSong, trending)
-    }
-  }
-
-  const handlePlayForYou = (song) => {
-    if (player?.playSong) {
-      player.playSong(song, forYouSongs)
-    }
-  }
-
-  const handlePlayFollowing = (song) => {
-    if (player?.playSong) {
-      player.playSong(song, followingSongs)
+      navigate('/now-playing')
     }
   }
 
@@ -375,14 +352,13 @@ const Home = () => {
     }
   }
 
-  // ==================== AD OVERLAY — COMPLETELY BLOCKS HOME ====================
+  // ==================== AD OVERLAY ====================
   if (showAd) {
     const CurrentIcon = adSlides[adSlide].icon
     const progressPercent = ((AD_DURATION - adTimeLeft) / AD_DURATION) * 100
 
     return (
       <div className="fixed inset-0 z-[9999] bg-black flex flex-col">
-        {/* Animated background */}
         <div className="absolute inset-0 overflow-hidden">
           <div className="absolute top-1/4 left-1/4 w-[500px] h-[500px] bg-emerald-600/15 rounded-full blur-[120px] animate-pulse" />
           <div className="absolute bottom-1/4 right-1/4 w-[500px] h-[500px] bg-cyan-600/15 rounded-full blur-[120px] animate-pulse delay-700" />
@@ -390,7 +366,6 @@ const Home = () => {
           <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.02)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.02)_1px,transparent_1px)] bg-[size:60px_60px]" />
         </div>
 
-        {/* Top bar */}
         <div className="relative z-10 flex items-center justify-between p-4 md:p-6">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center">
@@ -406,7 +381,6 @@ const Home = () => {
           </div>
           
           <div className="flex items-center gap-3">
-            {/* Mute toggle */}
             <button
               onClick={toggleMute}
               className="p-2.5 bg-white/10 hover:bg-white/20 backdrop-blur-md rounded-full border border-white/10 text-white transition-colors"
@@ -414,14 +388,12 @@ const Home = () => {
               {isMuted ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
             </button>
 
-            {/* Countdown */}
             <div className="px-4 py-2 bg-white/10 backdrop-blur-md rounded-full border border-white/10">
               <span className="text-white text-sm font-mono font-bold">
                 {Math.floor(adTimeLeft / 60)}:{String(adTimeLeft % 60).padStart(2, '0')}
               </span>
             </div>
 
-            {/* Skip button */}
             {canSkip ? (
               <motion.button
                 initial={{ opacity: 0, scale: 0.8 }}
@@ -440,7 +412,6 @@ const Home = () => {
           </div>
         </div>
 
-        {/* Main content */}
         <div className="relative z-10 flex-1 flex flex-col items-center justify-center px-6">
           <AnimatePresence mode="wait">
             <motion.div
@@ -464,7 +435,6 @@ const Home = () => {
             </motion.div>
           </AnimatePresence>
 
-          {/* Slide dots */}
           <div className="flex items-center gap-2 mt-10">
             {adSlides.map((_, i) => (
               <motion.div
@@ -475,7 +445,6 @@ const Home = () => {
             ))}
           </div>
 
-          {/* CTA Button */}
           <motion.button
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -489,7 +458,6 @@ const Home = () => {
             Visit ApiaroShop
           </motion.button>
 
-          {/* Audio hint */}
           <motion.p
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -508,7 +476,6 @@ const Home = () => {
           </motion.p>
         </div>
 
-        {/* Bottom progress bar */}
         <div className="relative z-10 h-1.5 bg-white/10">
           <motion.div
             className="h-full bg-gradient-to-r from-emerald-400 to-cyan-400"
@@ -518,7 +485,6 @@ const Home = () => {
           />
         </div>
 
-        {/* Time remaining text */}
         <div className="relative z-10 text-center py-2">
           <span className="text-xs text-gray-600">
             Your music will start in {adTimeLeft} seconds
@@ -527,7 +493,7 @@ const Home = () => {
       </div>
     )
   }
-  // ==================== END AD — HOME CONTENT ONLY RENDERS AFTER THIS ====================
+  // ==================== END AD ====================
 
   if (loading) {
     return (
@@ -630,7 +596,7 @@ const Home = () => {
         </div>
       </motion.section>
 
-      {/* Inline banner (shown after ad is dismissed) */}
+      {/* Inline banner */}
       <section className="px-4 md:px-8 py-4">
         <div className="relative rounded-2xl overflow-hidden bg-gradient-to-r from-emerald-900/50 to-teal-900/50 border border-emerald-500/20 p-4 flex items-center justify-between">
           <div className="flex items-center gap-4">
@@ -693,36 +659,12 @@ const Home = () => {
             ) : (
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                 {forYouSongs.map((song, i) => (
-                  <motion.div
-                    key={song.id}
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: i * 0.03 }}
-                    onMouseEnter={() => setHoveredSong(song.id)}
-                    onMouseLeave={() => setHoveredSong(null)}
-                    onClick={() => handlePlayForYou(song)}
-                    className="group cursor-pointer"
-                  >
-                    <div className="relative aspect-square rounded-xl overflow-hidden mb-2">
-                      <img
-                        src={getImageUrl(song.cover_url)}
-                        alt={song.title}
-                        className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
-                        onError={(e) => { e.target.src = '/default-cover.jpg' }}
-                      />
-                      <AnimatePresence>
-                        {hoveredSong === song.id && (
-                          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-black/50 flex items-center justify-center backdrop-blur-sm">
-                            <div className="w-10 h-10 bg-primary rounded-full flex items-center justify-center">
-                              <Play className="w-4 h-4 fill-current ml-0.5" />
-                            </div>
-                          </motion.div>
-                        )}
-                      </AnimatePresence>
-                    </div>
-                    <h3 className="font-semibold text-sm truncate group-hover:text-primary transition-colors">{song.title}</h3>
-                    <p className="text-xs text-gray-500 truncate">{getArtistName(song)}</p>
-                  </motion.div>
+                  <SongCard 
+                    key={song.id} 
+                    song={song} 
+                    index={i} 
+                    queue={forYouSongs}
+                  />
                 ))}
               </div>
             )}
@@ -793,39 +735,12 @@ const Home = () => {
 
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                   {followingSongs.map((song, i) => (
-                    <motion.div
-                      key={song.id}
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: i * 0.03 }}
-                      onMouseEnter={() => setHoveredSong(song.id)}
-                      onMouseLeave={() => setHoveredSong(null)}
-                      onClick={() => handlePlayFollowing(song)}
-                      className="group cursor-pointer"
-                    >
-                      <div className="relative aspect-square rounded-xl overflow-hidden mb-2">
-                        <img
-                          src={getImageUrl(song.cover_url)}
-                          alt={song.title}
-                          className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
-                          onError={(e) => { e.target.src = '/default-cover.jpg' }}
-                        />
-                        <AnimatePresence>
-                          {hoveredSong === song.id && (
-                            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-black/50 flex items-center justify-center backdrop-blur-sm">
-                              <div className="w-10 h-10 bg-primary rounded-full flex items-center justify-center">
-                                <Play className="w-4 h-4 fill-current ml-0.5" />
-                              </div>
-                            </motion.div>
-                          )}
-                        </AnimatePresence>
-                        <div className="absolute top-1.5 left-1.5 px-1.5 py-0.5 bg-primary/80 backdrop-blur-sm rounded text-[9px] font-bold text-white uppercase">
-                          New
-                        </div>
-                      </div>
-                      <h3 className="font-semibold text-sm truncate group-hover:text-primary transition-colors">{song.title}</h3>
-                      <p className="text-xs text-gray-500 truncate">{getArtistName(song)}</p>
-                    </motion.div>
+                    <SongCard 
+                      key={song.id} 
+                      song={song} 
+                      index={i} 
+                      queue={followingSongs}
+                    />
                   ))}
                 </div>
               </>
@@ -851,39 +766,12 @@ const Home = () => {
         ) : (
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             {trending.map((song, i) => (
-              <motion.div
-                key={song.id}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: i * 0.05 }}
-                onMouseEnter={() => setHoveredSong(song.id)}
-                onMouseLeave={() => setHoveredSong(null)}
-                onClick={() => handlePlayTrending(song)}
-                className="group cursor-pointer"
-              >
-                <div className="relative aspect-square rounded-xl overflow-hidden mb-2">
-                  <img
-                    src={getImageUrl(song.cover_url)}
-                    alt={song.title}
-                    className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
-                    onError={(e) => { e.target.src = '/default-cover.jpg' }}
-                  />
-                  <AnimatePresence>
-                    {hoveredSong === song.id && (
-                      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-black/50 flex items-center justify-center backdrop-blur-sm">
-                        <div className="w-10 h-10 bg-primary rounded-full flex items-center justify-center">
-                          <Play className="w-4 h-4 fill-current ml-0.5" />
-                        </div>
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
-                  <div className="absolute top-1.5 left-1.5 w-6 h-6 bg-black/60 backdrop-blur-sm rounded-md flex items-center justify-center">
-                    <span className="text-xs font-bold">{i + 1}</span>
-                  </div>
-                </div>
-                <h3 className="font-semibold text-sm truncate group-hover:text-primary transition-colors">{song.title}</h3>
-                <p className="text-xs text-gray-500 truncate">{getArtistName(song)}</p>
-              </motion.div>
+              <SongCard 
+                key={song.id} 
+                song={song} 
+                index={i} 
+                queue={trending}
+              />
             ))}
           </div>
         )}
@@ -1160,7 +1048,7 @@ const Home = () => {
                     {activeModal === 'recent' && modalData.map((item, i) => (
                       <div
                         key={item.id || i}
-                        onClick={() => { setActiveModal(null); player?.playSong?.(item.song) }}
+                        onClick={() => { setActiveModal(null); player?.playSong?.(item.song, [item.song]); navigate('/now-playing') }}
                         className="flex items-center gap-3 p-3 rounded-xl hover:bg-white/[0.03] transition-colors cursor-pointer group"
                       >
                         <div className="w-12 h-12 rounded-lg overflow-hidden flex-shrink-0">
@@ -1177,7 +1065,7 @@ const Home = () => {
                     {activeModal === 'fresh' && modalData.map((song, i) => (
                       <div
                         key={song.id}
-                        onClick={() => { setActiveModal(null); player?.playSong?.(song) }}
+                        onClick={() => { setActiveModal(null); player?.playSong?.(song, [song]); navigate('/now-playing') }}
                         className="flex items-center gap-3 p-3 rounded-xl hover:bg-white/[0.03] transition-colors cursor-pointer group"
                       >
                         <div className="w-12 h-12 rounded-lg overflow-hidden flex-shrink-0">

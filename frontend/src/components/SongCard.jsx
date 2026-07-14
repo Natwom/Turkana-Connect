@@ -1,12 +1,13 @@
 import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { Play, Heart, MessageCircle } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
 import { usePlayer } from '../context/PlayerContext'
 import { useAuth } from '../context/AuthContext'
 import likesApi from '../api/likes'
 
-const SongCard = ({ song, index = 0, onOpenComments }) => {
-  // NULL-SAFE: never destructure null
+const SongCard = ({ song, index = 0, queue = [], onOpenComments }) => {
+  const navigate = useNavigate()
   const player = usePlayer()
   const { playSong, currentSong, isPlaying } = player || {}
 
@@ -60,7 +61,8 @@ const SongCard = ({ song, index = 0, onOpenComments }) => {
 
   const handlePlay = () => {
     if (playSong && song) {
-      playSong(song)
+      playSong(song, queue.length > 0 ? queue : [song])
+      navigate('/now-playing')
     }
   }
 

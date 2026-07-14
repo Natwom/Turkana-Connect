@@ -18,6 +18,7 @@ import UploadSong from './pages/UploadSong'
 import GoLive from './pages/GoLive'
 import LiveStream from './pages/LiveStream'
 import LiveStreams from './pages/LiveStreams'
+import NowPlaying from './pages/NowPlaying'
 
 function ProfileRouter() {
   const { user } = useAuth()
@@ -48,6 +49,7 @@ function App() {
         </Route>
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
+        <Route path="/now-playing" element={<NowPlaying />} />
       </Routes>
     </PlayerProvider>
   )

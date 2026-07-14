@@ -24,7 +24,6 @@ const ArtistProfile = () => {
   const [followLoading, setFollowLoading] = useState(false)
   const [loading, setLoading] = useState(true)
   
-  // Comment modal state
   const [commentModalSong, setCommentModalSong] = useState(null)
 
   useEffect(() => {
@@ -166,6 +165,7 @@ const ArtistProfile = () => {
                 key={song.id} 
                 song={song} 
                 index={i} 
+                queue={artist.songs}
                 onOpenComments={handleOpenComments}
               />
             ))}
@@ -201,7 +201,6 @@ const ArtistProfile = () => {
         </section>
       )}
 
-      {/* Song Comments Modal */}
       <SongCommentsModal 
         song={commentModalSong}
         isOpen={!!commentModalSong}

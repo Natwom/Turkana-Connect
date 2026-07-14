@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from 'react'
 import { motion } from 'framer-motion'
+import { useNavigate } from 'react-router-dom'
 import {
   Play,
   Pause,
@@ -11,16 +12,15 @@ import {
   VolumeX,
   ListMusic,
   Heart,
+  ChevronUp,
 } from 'lucide-react'
 import { usePlayer } from '../context/PlayerContext'
 import { useAuth } from '../context/AuthContext'
 import { useSettings } from '../context/SettingsContext'
 import likesApi from '../api/likes'
 
-// Use the SAME fallback as axios.js so Render deployment works
 const API_BASE = import.meta.env.VITE_API_URL || 'https://turkana-connect-api.onrender.com'
 
-// Robust URL builder: handles /uploads/..., uploads/..., and http://...
 const normalizeUrl = (path) => {
   if (!path) return ''
   if (path.startsWith('http')) return path
@@ -33,6 +33,7 @@ const getAudioUrl = (path) => normalizeUrl(path)
 const getImageUrl = (path) => normalizeUrl(path) || '/default-cover.jpg'
 
 const MusicPlayer = () => {
+  const navigate = useNavigate()
   const player = usePlayer() || {}
   const { isAuthenticated } = useAuth()
   const { settings } = useSettings()
@@ -203,7 +204,8 @@ const MusicPlayer = () => {
     <motion.div
       initial={{ y: 100 }}
       animate={{ y: 0 }}
-      className="bg-[#0f0f1a]/95 backdrop-blur-xl border-t border-white/10 px-4 py-3 md:px-6 md:py-4"
+      className="bg-[#0f0f1a]/95 backdrop-blur-xl border-t border-white/10 px-4 py-3 md:px-6 md:py-4 cursor-pointer hover:bg-[#0f0f1a] transition-colors"
+      onClick={() => navigate('/now-playing')}
     >
       <audio
         ref={audioRef}
@@ -238,7 +240,10 @@ const MusicPlayer = () => {
             )}
           </div>
           <button
-            onClick={handleLikeToggle}
+            onClick={(e) => {
+              e.stopPropagation()
+              handleLikeToggle()
+            }}
             disabled={isLikeLoading}
             className="p-2 hover:bg-white/5 rounded-lg transition-colors disabled:opacity-50"
           >
@@ -256,7 +261,10 @@ const MusicPlayer = () => {
         <div className="flex-1 flex flex-col items-center gap-2">
           <div className="flex items-center gap-4">
             <button
-              onClick={() => setIsShuffle?.(!isShuffle)}
+              onClick={(e) => {
+                e.stopPropagation()
+                setIsShuffle?.(!isShuffle)
+              }}
               className={`p-2 rounded-lg transition-colors ${
                 isShuffle ? 'text-primary' : 'text-gray-400 hover:text-white'
               }`}
@@ -265,14 +273,20 @@ const MusicPlayer = () => {
               <Shuffle className="w-4 h-4" />
             </button>
             <button
-              onClick={() => playPrevious?.()}
+              onClick={(e) => {
+                e.stopPropagation()
+                playPrevious?.()
+              }}
               className="p-2 hover:bg-white/5 rounded-lg text-gray-300 hover:text-white transition-colors"
               title="Previous"
             >
               <SkipBack className="w-5 h-5" />
             </button>
             <button
-              onClick={() => togglePlay?.()}
+              onClick={(e) => {
+                e.stopPropagation()
+                togglePlay?.()
+              }}
               className="w-10 h-10 bg-white rounded-full flex items-center justify-center hover:scale-105 transition-transform"
             >
               {isPlaying ? (
@@ -282,14 +296,20 @@ const MusicPlayer = () => {
               )}
             </button>
             <button
-              onClick={() => playNext?.()}
+              onClick={(e) => {
+                e.stopPropagation()
+                playNext?.()
+              }}
               className="p-2 hover:bg-white/5 rounded-lg text-gray-300 hover:text-white transition-colors"
               title="Next"
             >
               <SkipForward className="w-5 h-5" />
             </button>
             <button
-              onClick={() => setIsRepeat?.(!isRepeat)}
+              onClick={(e) => {
+                e.stopPropagation()
+                setIsRepeat?.(!isRepeat)
+              }}
               className={`p-2 rounded-lg transition-colors ${
                 isRepeat ? 'text-primary' : 'text-gray-400 hover:text-white'
               }`}
@@ -309,7 +329,11 @@ const MusicPlayer = () => {
                 min={0}
                 max={duration || 100}
                 value={progress}
-                onChange={handleSeek}
+                onChange={(e) => {
+                  e.stopPropagation()
+                  handleSeek(e)
+                }}
+                onClick={(e) => e.stopPropagation()}
                 className="w-full h-1 bg-surface rounded-full appearance-none cursor-pointer accent-primary"
               />
               <div
@@ -323,9 +347,10 @@ const MusicPlayer = () => {
           </div>
         </div>
 
-        {/* Volume & Queue */}
+        {/* Volume, Queue & Expand */}
         <div className="flex items-center gap-3 w-1/4 justify-end">
           <button
+            onClick={(e) => e.stopPropagation()}
             className="p-2 hover:bg-white/5 rounded-lg text-gray-400 hover:text-white transition-colors relative"
             title={`Queue (${queueCount})`}
           >
@@ -336,7 +361,7 @@ const MusicPlayer = () => {
               </span>
             )}
           </button>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
             <button
               onClick={() => setIsMuted(!isMuted)}
               className="p-2 hover:bg-white/5 rounded-lg text-gray-400 hover:text-white transition-colors"
@@ -357,6 +382,16 @@ const MusicPlayer = () => {
               className="w-20 h-1 bg-surface rounded-full appearance-none cursor-pointer accent-primary"
             />
           </div>
+          <button
+            onClick={(e) => {
+              e.stopPropagation()
+              navigate('/now-playing')
+            }}
+            className="p-2 hover:bg-white/5 rounded-lg text-gray-400 hover:text-white transition-colors"
+            title="Expand"
+          >
+            <ChevronUp className="w-5 h-5" />
+          </button>
         </div>
       </div>
     </motion.div>
