@@ -15,12 +15,11 @@ export const PlayerProvider = ({ children }) => {
   const [duration, setDuration] = useState(0)
   const [audioError, setAudioError] = useState(false)
 
-  // Audio ref lives HERE in context so it persists across route changes
   const audioRef = useRef(null)
 
-  // Only record play if user is authenticated (token exists)
+  // ✅ FIXED: Record play for EVERYONE — guests and logged-in users
   const safeRecordPlay = useCallback((songId) => {
-    if (songId && localStorage.getItem('token')) {
+    if (songId) {
       recordPlay(songId).catch(() => {
         // Silently fail — don't break playback if analytics fail
       })
@@ -130,7 +129,6 @@ export const PlayerProvider = ({ children }) => {
     setHistory([])
   }, [])
 
-  // Audio element effect — loads new song when currentSong changes
   useEffect(() => {
     if (!currentSong || !audioRef.current) return
 
@@ -160,7 +158,6 @@ export const PlayerProvider = ({ children }) => {
     }
   }, [currentSong])
 
-  // Play/pause effect
   useEffect(() => {
     if (!audioRef.current) return
 
@@ -177,7 +174,6 @@ export const PlayerProvider = ({ children }) => {
     }
   }, [isPlaying])
 
-  // Time update handler
   const handleTimeUpdate = useCallback(() => {
     if (audioRef.current) {
       setProgress(audioRef.current.currentTime)
@@ -185,7 +181,6 @@ export const PlayerProvider = ({ children }) => {
     }
   }, [])
 
-  // Ended handler
   const handleEnded = useCallback(() => {
     if (isRepeat) {
       if (audioRef.current) {
@@ -199,13 +194,11 @@ export const PlayerProvider = ({ children }) => {
     }
   }, [isRepeat, playNext])
 
-  // Error handler
   const handleAudioError = useCallback(() => {
     console.error('Audio element error')
     setAudioError(true)
   }, [])
 
-  // Seek function
   const seek = useCallback((time) => {
     if (audioRef.current && !isNaN(time)) {
       audioRef.current.currentTime = time
@@ -213,7 +206,6 @@ export const PlayerProvider = ({ children }) => {
     }
   }, [])
 
-  // Volume function
   const setVolume = useCallback((vol) => {
     if (audioRef.current) {
       audioRef.current.volume = vol
@@ -249,7 +241,6 @@ export const PlayerProvider = ({ children }) => {
         setVolume,
       }}
     >
-      {/* Hidden audio element that persists across all routes */}
       <audio
         ref={audioRef}
         onTimeUpdate={handleTimeUpdate}

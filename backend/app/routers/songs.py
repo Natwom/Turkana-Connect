@@ -19,11 +19,9 @@ def list_songs(
     category: Optional[str] = None,
     artist_id: Optional[int] = None,
     search: Optional[str] = None,
-    approved_only: Optional[bool] = True,  # ← FIXED: Added param, defaults to True for public safety
+    approved_only: Optional[bool] = True,
     db: Session = Depends(get_db)
 ):
-    # ← FIXED: Only filter by approval when approved_only is True (public requests)
-    # When approved_only=False (admin), return ALL songs including pending
     query = db.query(models.Song)
     if approved_only:
         query = query.filter(models.Song.is_approved == True)
@@ -76,33 +74,42 @@ def get_song(song_id: int, db: Session = Depends(get_db)):
         raise HTTPException(404, "Song not found")
     return song
 
+# ============ FIXED: record_play now works for guests AND logged-in users ============
+
 @router.post("/{song_id}/play")
 def record_play(
     song_id: int,
-    current_user: models.User = Depends(auth.get_current_active_user),
+    current_user: Optional[models.User] = Depends(auth.get_current_active_user_optional),
     db: Session = Depends(get_db)
 ):
     song = db.query(models.Song).filter(models.Song.id == song_id).first()
     if not song:
         raise HTTPException(404, "Song not found")
     
+    # Always increment play count — works for guests AND logged-in users
     song.play_count += 1
     
-    play_history = models.PlayHistory(
-        user_id=current_user.id,
-        song_id=song_id,
-        duration_played=song.duration or 0
-    )
-    db.add(play_history)
+    # Only save to personal play history if user is logged in
+    if current_user:
+        play_history = models.PlayHistory(
+            user_id=current_user.id,
+            song_id=song_id,
+            duration_played=song.duration or 0
+        )
+        db.add(play_history)
+    
     db.commit()
     
+    # Update artist total streams
     if song.artist:
         song.artist.total_streams = db.query(func.sum(models.Song.play_count)).filter(
             models.Song.artist_id == song.artist_id
         ).scalar() or 0
         db.commit()
     
-    return {"message": "Play recorded"}
+    return {"message": "Play recorded", "play_count": song.play_count}
+
+# ============ END FIXED ============
 
 @router.get("/{song_id}/stream")
 def get_stream_url(song_id: int, db: Session = Depends(get_db)):

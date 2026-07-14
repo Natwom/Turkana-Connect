@@ -11,7 +11,7 @@ from app import models, schemas
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login")
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login", auto_error=False)
 
 def verify_password(plain_password, hashed_password):
     return pwd_context.verify(plain_password, hashed_password)
@@ -64,6 +64,40 @@ async def get_current_active_user(current_user: models.User = Depends(get_curren
     if not current_user.is_active:
         raise HTTPException(status_code=400, detail="Inactive user")
     return current_user
+
+# ============ NEW: Optional auth for guest-friendly endpoints ============
+
+async def get_current_active_user_optional(
+    token: Optional[str] = Depends(oauth2_scheme),
+    db: Session = Depends(get_db)
+) -> Optional[models.User]:
+    """
+    Same as get_current_active_user but returns None for unauthenticated users
+    instead of raising a 401 error. Used for endpoints that work for both guests
+    and logged-in users (like recording song plays).
+    """
+    if not token:
+        return None
+    
+    payload = decode_token(token)
+    if payload is None or payload.get("type") != "access":
+        return None
+    
+    user_id = payload.get("sub")
+    if user_id is None:
+        return None
+    
+    try:
+        user = db.query(models.User).filter(models.User.id == int(user_id)).first()
+    except (ValueError, TypeError):
+        return None
+    
+    if user is None or not user.is_active:
+        return None
+    
+    return user
+
+# ============ END NEW ============
 
 def require_role(roles: list):
     async def role_checker(current_user: models.User = Depends(get_current_active_user)):
